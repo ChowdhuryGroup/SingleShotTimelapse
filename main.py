@@ -9,8 +9,11 @@ from matplotlib.widgets import Button
 
 
 # load all images to corresponding times
+# NEED TO ADD DARK FIELD BACKGROUND SUBTRACTION
 
-directory = "data/TA/455mw"
+directory = "data/glass/458mw"
+darkFieldPath = "data/glass/bkgWithFlash.tif"
+darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 tsv_file = os.path.join(directory, "timings.txt")
 zero_time = 56
 
@@ -18,6 +21,8 @@ df = pd.read_csv(tsv_file, sep="\t", header=0, names=["trial", "time"])
 
 # filter out lost timing trials
 df = df[pd.to_numeric(df["time"], errors="coerce").notnull()]
+
+darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH)
 
 before_images_by_time = {}
 during_images_by_time = {}
@@ -39,6 +44,10 @@ for trial in df["trial"]:
 
     before_image = cv2.imread(before_image_path, cv2.IMREAD_ANYDEPTH)
     during_image = cv2.imread(during_image_path, cv2.IMREAD_ANYDEPTH)
+
+    # before_image = np.maximum(before_image - darkbkg, 0.1)
+    # during_image = np.maximum(during_image - darkbkg, 0.1)
+
     normalized_image = during_image / before_image
 
     # Get sample edge:
@@ -122,7 +131,9 @@ def showImages(imageDictionary, draw_line=True):
 
     # Display the first image
     image_display = ax.imshow(imageDictionary[sorted_keys[index]][0], cmap="gray")
-    ax.set_title(f"Time: {sorted_keys[index]}")
+    ax.set_title(
+        f"Time: {sorted_keys[index]}, Edge pixel: {edge_positions[sorted_keys[index]][0]}"
+    )
     if draw_line:
         ax.axvline(x=edge_positions[sorted_keys[index]][0], color="r", linestyle="--")
 
@@ -133,7 +144,9 @@ def showImages(imageDictionary, draw_line=True):
         ax.clear()
         image_display = ax.imshow(imageDictionary[sorted_keys[index]][0], cmap="gray")
         image_display.set_data(imageDictionary[sorted_keys[index]][0])
-        ax.set_title(f"Time: {sorted_keys[index]}")
+        ax.set_title(
+            f"Time: {sorted_keys[index]}, Edge pixel: {edge_positions[sorted_keys[index]][0]}"
+        )
         if draw_line:
             ax.axvline(
                 x=edge_positions[sorted_keys[index]][0], color="r", linestyle="--"
