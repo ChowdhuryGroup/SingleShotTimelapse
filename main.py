@@ -46,7 +46,7 @@ for trial in df["trial"]:
     column_sum = np.sum(before_image, axis=0)
 
     # Define the window size
-    window_size = 5
+    window_size = 10
 
     # Calculate the gradient within the window
     gradients = np.array(
@@ -111,42 +111,50 @@ def showAnmiation():
 # Find the edge of sample for each channel in the before image
 
 
-# Initialize the index
-index = 0
-
-# Create figure and axis
-fig, ax = plt.subplots()
-plt.subplots_adjust(bottom=0.2)
-
-# Display the first image
-image_display = ax.imshow(normalized_images_by_time[sorted_keys[index]][0], cmap="gray")
-ax.set_title(f"Time: {sorted_keys[index]}")
-
-
-# Function to update the image
-def update_image(event):
+def showImages(imageDictionary, draw_line=True):
     global index
-    index = (index + 1) % len(sorted_keys)
-    ax.clear()
-    image_display = ax.imshow(
-        normalized_images_by_time[sorted_keys[index]][0], cmap="gray"
-    )
-    image_display.set_data(normalized_images_by_time[sorted_keys[index]][0])
+    # Initialize the index
+    index = 0
+
+    # Create figure and axis
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
+
+    # Display the first image
+    image_display = ax.imshow(imageDictionary[sorted_keys[index]][0], cmap="gray")
     ax.set_title(f"Time: {sorted_keys[index]}")
-    ax.axvline(x=edge_positions[sorted_keys[index]][0], color="r", linestyle="--")
+    if draw_line:
+        ax.axvline(x=edge_positions[sorted_keys[index]][0], color="r", linestyle="--")
 
-    plt.draw()
+    # Function to update the image
+    def update_image(event):
+        global index
+        index = (index + 1) % len(sorted_keys)
+        ax.clear()
+        image_display = ax.imshow(imageDictionary[sorted_keys[index]][0], cmap="gray")
+        image_display.set_data(imageDictionary[sorted_keys[index]][0])
+        ax.set_title(f"Time: {sorted_keys[index]}")
+        if draw_line:
+            ax.axvline(
+                x=edge_positions[sorted_keys[index]][0], color="r", linestyle="--"
+            )
+
+        plt.draw()
+
+    # Create a button
+    ax_button = plt.axes([0.45, 0.05, 0.1, 0.075])
+    button = Button(ax_button, "Next")
+
+    # Connect the button to the update function
+    button.on_clicked(update_image)
+
+    # Display the plot
+    plt.show()
 
 
-# Create a button
-ax_button = plt.axes([0.45, 0.05, 0.1, 0.075])
-button = Button(ax_button, "Next")
-
-# Connect the button to the update function
-button.on_clicked(update_image)
-
-# Display the plot
-plt.show()
+showImages(before_images_by_time)
+showImages(during_images_by_time, draw_line=False)
+showImages(normalized_images_by_time)
 
 
 # Crop all images to each channel
