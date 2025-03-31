@@ -8,15 +8,17 @@ import matplotlib.animation as animation
 from matplotlib.widgets import Button
 
 
-# load all images to corresponding times
-# NEED TO ADD DARK FIELD BACKGROUND SUBTRACTION
-
+# User Inputs
 directory = "data/TA/455mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
-tsv_file = os.path.join(directory, "timings.txt")
 zero_time = 56
+sample_is_glass = False
 
+
+tsv_file = os.path.join(directory, "timings.txt")
+
+# load all images to corresponding times
 df = pd.read_csv(tsv_file, sep="\t", header=0, names=["trial", "time"])
 
 # filter out lost timing trials
@@ -69,6 +71,66 @@ for trial in df["trial"]:
     # Find the position of the biggest gradient
     edge_position = np.argmax(max_gradients)
 
+    # Center the images based on the edge position
+
+    original_image_width = before_image.shape[0]
+    shift = original_image_width - edge_position
+
+    def center_image(image, shift):
+        if shift > 0:
+            image = np.pad(image, ((0, 0), (shift, 0)), mode="constant")
+        elif shift < 0:
+            image = np.pad(image, ((0, 0), (0, -shift)), mode="constant")
+        return image
+
+    # Check if the sample is glass
+
+    if sample_is_glass:
+        # Center the edge position with the whole image on display
+        center_position = before_image.shape[0] // 2
+        shift = center_position - edge_position
+
+        def align_image(image, shift):
+            if shift > 0:
+                image = np.pad(image, ((0, 0), (shift, 0)), mode="constant")[
+                    :, : image.shape[0]
+                ]
+            elif shift < 0:
+                image = np.pad(image, ((0, 0), (0, -shift)), mode="constant")[
+                    :, -shift:
+                ]
+            return image
+
+        before_image = align_image(before_image, shift)
+        during_image = align_image(during_image, shift)
+        normalized_image = align_image(normalized_image, shift)
+
+        # Crop the images to ensure they have the same width
+        crop_width = before_image.shape[0]
+        before_image = before_image[:, :crop_width]
+        during_image = during_image[:, :crop_width]
+        normalized_image = normalized_image[:, :crop_width]
+    else:
+        # Move the sample to the edge
+        original_image_width = before_image.shape[0]
+        shift = original_image_width - 60 - edge_position
+
+        def align_image(image, shift):
+            if shift > 0:
+                image = np.pad(image, ((0, 0), (shift, 0)), mode="constant")
+            elif shift < 0:
+                image = np.pad(image, ((0, 0), (0, -shift)), mode="constant")
+            return image
+
+        before_image = align_image(before_image, shift)
+        during_image = align_image(during_image, shift)
+        normalized_image = align_image(normalized_image, shift)
+
+        # Crop and flip images to same size
+        before_image = np.fliplr(before_image[:, :original_image_width])
+        during_image = np.fliplr(during_image[:, :original_image_width])
+        normalized_image = np.fliplr(normalized_image[:, :original_image_width])
+
     # Get the corresponding time for the trial
     time = zero_time - float(df.loc[df["trial"] == trial, "time"].values)
     # Store images in the dictionaries
@@ -86,7 +148,6 @@ for trial in df["trial"]:
 
 # Sort the keys
 sorted_keys = sorted(normalized_images_by_time.keys())
-print(normalized_images_by_time[sorted_keys[0]][0])
 
 
 def showAnmiation():
@@ -167,9 +228,9 @@ def showImages(imageDictionary, draw_line=True):
     plt.show()
 
 
-showImages(before_images_by_time)
+showImages(before_images_by_time, draw_line=False)
 showImages(during_images_by_time, draw_line=False)
-showImages(normalized_images_by_time)
+showImages(normalized_images_by_time, draw_line=False)
 
 
 # Crop all images to each channel
