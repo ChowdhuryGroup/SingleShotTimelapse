@@ -11,7 +11,7 @@ from matplotlib.widgets import Button
 # load all images to corresponding times
 # NEED TO ADD DARK FIELD BACKGROUND SUBTRACTION
 
-directory = "data/glass/458mw"
+directory = "data/TA/455mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 tsv_file = os.path.join(directory, "timings.txt")
@@ -22,7 +22,7 @@ df = pd.read_csv(tsv_file, sep="\t", header=0, names=["trial", "time"])
 # filter out lost timing trials
 df = df[pd.to_numeric(df["time"], errors="coerce").notnull()]
 
-darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH)
+darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH).astype(np.float32)
 
 before_images_by_time = {}
 during_images_by_time = {}
@@ -42,11 +42,11 @@ for trial in df["trial"]:
     before_image_path = os.path.join(trial_folder, image_files[0])
     during_image_path = os.path.join(trial_folder, image_files[1])
 
-    before_image = cv2.imread(before_image_path, cv2.IMREAD_ANYDEPTH)
-    during_image = cv2.imread(during_image_path, cv2.IMREAD_ANYDEPTH)
+    before_image = cv2.imread(before_image_path, cv2.IMREAD_ANYDEPTH).astype(np.float32)
+    during_image = cv2.imread(during_image_path, cv2.IMREAD_ANYDEPTH).astype(np.float32)
 
-    # before_image = np.maximum(before_image - darkbkg, 0.1)
-    # during_image = np.maximum(during_image - darkbkg, 0.1)
+    before_image = np.clip(before_image, 0.1, 65535)
+    during_image = np.clip(during_image, 0.1, 65535)
 
     normalized_image = during_image / before_image
 
@@ -83,8 +83,10 @@ for trial in df["trial"]:
         normalized_images_by_time[time].append(normalized_image)
         edge_positions[time].append(edge_position)
 
+
 # Sort the keys
 sorted_keys = sorted(normalized_images_by_time.keys())
+print(normalized_images_by_time[sorted_keys[0]][0])
 
 
 def showAnmiation():
