@@ -6,10 +6,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.widgets import Button
+import time
+import matplotlib as mpl
+import tkinter as tk
+from tkinter import filedialog
 
+
+mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at least?)
 
 # User Inputs
-directory = "data/Glass/458mw"
+directory = "data/glass/458mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 zero_time = 56
@@ -132,18 +138,19 @@ for trial in df["trial"]:
         normalized_image = np.fliplr(normalized_image[:, :original_image_width])
 
     # Get the corresponding time for the trial
-    time = zero_time - float(df.loc[df["trial"] == trial, "time"].values)
+    time_of_image = zero_time - float(df.loc[df["trial"] == trial, "time"].iloc[0])
+
     # Store images in the dictionaries
-    if time not in before_images_by_time:
-        before_images_by_time[time] = [before_image]
-        during_images_by_time[time] = [during_image]
-        normalized_images_by_time[time] = [normalized_image]
-        edge_positions[time] = [edge_position]
+    if time_of_image not in before_images_by_time:
+        before_images_by_time[time_of_image] = [before_image]
+        during_images_by_time[time_of_image] = [during_image]
+        normalized_images_by_time[time_of_image] = [normalized_image]
+        edge_positions[time_of_image] = [edge_position]
     else:
-        before_images_by_time[time].append(before_image)
-        during_images_by_time[time].append(during_image)
-        normalized_images_by_time[time].append(normalized_image)
-        edge_positions[time].append(edge_position)
+        before_images_by_time[time_of_image].append(before_image)
+        during_images_by_time[time_of_image].append(during_image)
+        normalized_images_by_time[time_of_image].append(normalized_image)
+        edge_positions[time_of_image].append(edge_position)
 
 
 # Sort the keys
@@ -235,6 +242,8 @@ def showImages(imageDictionary, draw_line=True):
 
 # Crop all images to each channel
 number_of_channels = 4
+timing_of_channels = [0, 1, 2, 3]  # top channel is timing of first value here
+
 split_channels = {}
 
 for key in sorted_keys:
@@ -296,7 +305,124 @@ def showChannelsAndComposite(split_channels, number_of_channels):
     plt.show()
 
 
-showChannelsAndComposite(split_channels, number_of_channels)
+# showChannelsAndComposite(split_channels, number_of_channels)
+
+
+def showChannelsAndMarkFeatures(split_channels, number_of_channels):
+    sorted_keys = list(split_channels.keys())
+    index = 0
+    markers = {}
+
+    fig, axes = plt.subplots(1, number_of_channels + 1, figsize=(15, 5))
+    plt.subplots_adjust(bottom=0.2)
+
+    def update_display():
+        key = sorted_keys[index]
+        for j in range(number_of_channels):
+            axes[j].clear()
+            axes[j].imshow(split_channels[key][0][j], cmap="gray")
+            axes[j].set_title(
+                f"Channel {j+1} at Time {round(key-timing_of_channels[j], 2)}"
+            )
+
+        combined_image = np.vstack(
+            [split_channels[key][0][j] for j in range(number_of_channels)]
+        )
+        axes[number_of_channels].clear()
+        axes[number_of_channels].imshow(combined_image, cmap="gray")
+        axes[number_of_channels].set_title(
+            f"Combined Image at Top Channel Time {round(key, 2)}"
+        )
+
+        plt.draw()
+
+    def next_image(event):
+        nonlocal index
+        index = (index + 1) % len(sorted_keys)
+        update_display()
+
+    def prev_image(event):
+        nonlocal index
+        index = (index - 1) % len(sorted_keys)
+        update_display()
+
+    def mark_features(event):
+        plt.ion()
+        key = sorted_keys[index]
+        if key in markers:
+            markers[key] = {}
+        for j in range(number_of_channels):
+            plt.figure()
+            plt.imshow(split_channels[key][0][j], cmap="gray")
+            plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
+            coords = plt.ginput(n=1, timeout=0)
+            plt.close()
+            if key not in markers:
+                markers[key] = {}
+            markers[key][j] = coords
+
+    axprev = plt.axes([0.3, 0.05, 0.1, 0.075])
+    axnext = plt.axes([0.45, 0.05, 0.1, 0.075])
+    axmark = plt.axes([0.6, 0.05, 0.1, 0.075])
+    bnext = Button(axnext, "Next")
+    bprev = Button(axprev, "Previous")
+    bmark = Button(axmark, "Mark Features")
+    bnext.on_clicked(next_image)
+    bprev.on_clicked(prev_image)
+    bmark.on_clicked(mark_features)
+
+    update_display()
+    plt.show()
+
+    return markers
+
+
+markers = showChannelsAndMarkFeatures(split_channels, number_of_channels)
+
+
+def save_markers_to_tsv(markers, filename):
+    # Create a DataFrame to store the marker coordinates
+    data = []
+
+    for key in markers:
+        row = [round(key, 2)]
+        for channel in range(number_of_channels):
+            if channel in markers[key]:
+                coords = markers[key][channel]
+                if coords:
+                    row.append(coords[0][0])  # X coordinate
+                else:
+                    row.append(None)
+            else:
+                row.append(None)
+        data.append(row)
+
+    # Create the DataFrame
+    columns = ["time"] + [
+        f"channel{channel+1}X coord" for channel in range(number_of_channels)
+    ]
+    df = pd.DataFrame(data, columns=columns)
+
+    # Save the DataFrame to a TSV file
+    df.to_csv(filename, sep="\t", index=False)
+
+
+def create_file():
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".tsv", filetypes=[("TSV files", "*.tsv")]
+    )
+    if file_path:
+        with open(file_path, "w") as file:
+            file.write("")  # Create an empty file
+        return file_path
+
+
+# Example usage
+filename = create_file()
+print(filename)
+save_markers_to_tsv(markers, filename)
 
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
