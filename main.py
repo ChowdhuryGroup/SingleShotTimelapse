@@ -9,11 +9,11 @@ from matplotlib.widgets import Button
 
 
 # User Inputs
-directory = "data/TA/455mw"
+directory = "data/Glass/458mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 zero_time = 56
-sample_is_glass = False
+sample_is_glass = True
 
 
 tsv_file = os.path.join(directory, "timings.txt")
@@ -228,12 +228,76 @@ def showImages(imageDictionary, draw_line=True):
     plt.show()
 
 
-showImages(before_images_by_time, draw_line=False)
-showImages(during_images_by_time, draw_line=False)
-showImages(normalized_images_by_time, draw_line=False)
+# showImages(before_images_by_time, draw_line=False)
+# showImages(during_images_by_time, draw_line=False)
+# showImages(normalized_images_by_time, draw_line=False)
 
 
 # Crop all images to each channel
+number_of_channels = 4
+split_channels = {}
+
+for key in sorted_keys:
+    images_at_time = 0  # handle multiple images taken at the same time
+    for image in normalized_images_by_time[key]:
+        channels_in_image = {}
+        channel_height = image.shape[1] // 4
+        for channel in range(number_of_channels):
+            channels_in_image[channel] = image[
+                channel * channel_height : (channel + 1) * channel_height, :
+            ]
+        if key not in split_channels:
+            split_channels[key] = [channels_in_image]
+        else:
+            split_channels[key].append(channels_in_image)
+
+
+def showChannelsAndComposite(split_channels, number_of_channels):
+    sorted_keys = list(split_channels.keys())
+    index = 0
+
+    fig, axes = plt.subplots(1, number_of_channels + 1, figsize=(15, 5))
+    plt.subplots_adjust(bottom=0.2)
+
+    def update_display():
+        key = sorted_keys[index]
+        for j in range(number_of_channels):
+            axes[j].imshow(split_channels[key][0][j], cmap="gray")
+            axes[j].set_title(f"Channel {j+1} at Time {round(key-j,2)}")
+
+        combined_image = np.vstack(
+            [split_channels[key][0][j] for j in range(number_of_channels)]
+        )
+        axes[number_of_channels].imshow(combined_image, cmap="gray")
+        axes[number_of_channels].set_title(
+            f"Combined Image at Top Channel Time {round(key,2)}"
+        )
+
+        plt.draw()
+
+    def next_image(event):
+        nonlocal index
+        index = (index + 1) % len(sorted_keys)
+        update_display()
+
+    def prev_image(event):
+        nonlocal index
+        index = (index - 1) % len(sorted_keys)
+        update_display()
+
+    axprev = plt.axes([0.4, 0.05, 0.1, 0.075])
+    axnext = plt.axes([0.55, 0.05, 0.1, 0.075])
+    bnext = Button(axnext, "Next")
+    bprev = Button(axprev, "Previous")
+    bnext.on_clicked(next_image)
+    bprev.on_clicked(prev_image)
+
+    update_display()
+    plt.show()
+
+
+showChannelsAndComposite(split_channels, number_of_channels)
+
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
 # divide the before and during
