@@ -261,7 +261,7 @@ for key in sorted_keys:
             split_channels[key].append(channels_in_image)
 
 
-def showChannelsAndComposite(split_channels, number_of_channels):
+def showChannelsAndComposit2(split_channels, number_of_channels):
     sorted_keys = list(split_channels.keys())
     index = 0
 
@@ -305,6 +305,74 @@ def showChannelsAndComposite(split_channels, number_of_channels):
     plt.show()
 
 
+def showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1):
+    sorted_keys = list(split_channels.keys())
+    index = 0
+
+    fig, axes = plt.subplots(1, number_of_channels + 1, figsize=(15, 5))
+    plt.subplots_adjust(bottom=0.2)
+
+    def update_display():
+        key = sorted_keys[index]
+        for j in range(number_of_channels):
+            axes[j].imshow(split_channels[key][0][j], cmap="gray")
+            axes[j].set_title(f"Channel {j+1} at Time {round(key-j,2)}ns")
+            axes[j].set_xticks(
+                np.arange(0, split_channels[key][0][j].shape[1], step=220)
+            )
+            axes[j].set_xticklabels(
+                [
+                    round(x * micron_per_pixel, 2)
+                    for x in np.arange(0, split_channels[key][0][j].shape[1], step=220)
+                ]
+            )
+            axes[j].set_yticks([])  # Hide y-axis
+            axes[j].set_xlabel("Distance (µm)")
+
+        combined_image = np.vstack(
+            [split_channels[key][0][j] for j in range(number_of_channels)]
+        )
+        axes[number_of_channels].imshow(combined_image, cmap="gray")
+        axes[number_of_channels].set_title(
+            f"Combined Image at Top Channel Time {round(key,2)}ns"
+        )
+        axes[number_of_channels].set_xticks(
+            np.arange(0, combined_image.shape[1], step=220)
+        )
+        axes[number_of_channels].set_xticklabels(
+            [
+                round(x * micron_per_pixel, 2)
+                for x in np.arange(0, combined_image.shape[1], step=220)
+            ]
+        )
+        axes[number_of_channels].set_xlabel("Distance (µm)")
+        axes[number_of_channels].set_yticks([])  # Hide y-axis
+
+        plt.draw()
+
+    def next_image(event):
+        nonlocal index
+        index = (index + 1) % len(sorted_keys)
+        update_display()
+
+    def prev_image(event):
+        nonlocal index
+        index = (index - 1) % len(sorted_keys)
+        update_display()
+
+    axprev = plt.axes([0.4, 0.05, 0.1, 0.075])
+    axnext = plt.axes([0.55, 0.05, 0.1, 0.075])
+    bnext = Button(axnext, "Next")
+    bprev = Button(axprev, "Previous")
+    bnext.on_clicked(next_image)
+    bprev.on_clicked(prev_image)
+
+    update_display()
+    plt.show()
+
+
+# Example usage
+showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1 / 4.04)
 # showChannelsAndComposite(split_channels, number_of_channels)
 
 
@@ -377,7 +445,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
     return markers
 
 
-markers = showChannelsAndMarkFeatures(split_channels, number_of_channels)
+# markers = showChannelsAndMarkFeatures(split_channels, number_of_channels)
 
 
 def save_markers_to_tsv(markers, filename):
@@ -419,10 +487,10 @@ def create_file():
         return file_path
 
 
-# Example usage
-filename = create_file()
-print(filename)
-save_markers_to_tsv(markers, filename)
+# Save markers
+# filename = create_file()
+# print(filename)
+# save_markers_to_tsv(markers, filename)
 
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
