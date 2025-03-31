@@ -15,11 +15,11 @@ from tkinter import filedialog
 mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at least?)
 
 # User Inputs
-directory = "data/glass/458mw"
+directory = "data/TA/455mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 zero_time = 56
-sample_is_glass = True
+sample_is_glass = False
 
 
 tsv_file = os.path.join(directory, "timings.txt")
@@ -240,6 +240,19 @@ def showImages(imageDictionary, draw_line=True):
 # showImages(normalized_images_by_time, draw_line=False)
 
 
+# Save normalized images
+def saveImages(imageDictionary, save_path):
+    for key, image in imageDictionary.items():
+        file_path = f"{save_path}/image_{key}_ns.tiff"
+        cv2.imwrite(file_path, image[0].astype(np.float32))
+        print(f"Saved {file_path}")
+
+
+save_path = directory + "Compiled Images"
+# os.makedirs(save_path)
+# saveImages(normalized_images_by_time, save_path)
+
+
 # Crop all images to each channel
 number_of_channels = 4
 timing_of_channels = [0, 1, 2, 3]  # top channel is timing of first value here
@@ -259,50 +272,6 @@ for key in sorted_keys:
             split_channels[key] = [channels_in_image]
         else:
             split_channels[key].append(channels_in_image)
-
-
-def showChannelsAndComposit2(split_channels, number_of_channels):
-    sorted_keys = list(split_channels.keys())
-    index = 0
-
-    fig, axes = plt.subplots(1, number_of_channels + 1, figsize=(15, 5))
-    plt.subplots_adjust(bottom=0.2)
-
-    def update_display():
-        key = sorted_keys[index]
-        for j in range(number_of_channels):
-            axes[j].imshow(split_channels[key][0][j], cmap="gray")
-            axes[j].set_title(f"Channel {j+1} at Time {round(key-j,2)}")
-
-        combined_image = np.vstack(
-            [split_channels[key][0][j] for j in range(number_of_channels)]
-        )
-        axes[number_of_channels].imshow(combined_image, cmap="gray")
-        axes[number_of_channels].set_title(
-            f"Combined Image at Top Channel Time {round(key,2)}"
-        )
-
-        plt.draw()
-
-    def next_image(event):
-        nonlocal index
-        index = (index + 1) % len(sorted_keys)
-        update_display()
-
-    def prev_image(event):
-        nonlocal index
-        index = (index - 1) % len(sorted_keys)
-        update_display()
-
-    axprev = plt.axes([0.4, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.55, 0.05, 0.1, 0.075])
-    bnext = Button(axnext, "Next")
-    bprev = Button(axprev, "Previous")
-    bnext.on_clicked(next_image)
-    bprev.on_clicked(prev_image)
-
-    update_display()
-    plt.show()
 
 
 def showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1):
@@ -372,7 +341,7 @@ def showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixe
 
 
 # Example usage
-showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1 / 4.04)
+# showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1 / 4.04)
 # showChannelsAndComposite(split_channels, number_of_channels)
 
 
@@ -445,7 +414,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
     return markers
 
 
-# markers = showChannelsAndMarkFeatures(split_channels, number_of_channels)
+markers = showChannelsAndMarkFeatures(split_channels, number_of_channels)
 
 
 def save_markers_to_tsv(markers, filename):
@@ -488,9 +457,9 @@ def create_file():
 
 
 # Save markers
-# filename = create_file()
-# print(filename)
-# save_markers_to_tsv(markers, filename)
+filename = create_file()
+print(filename)
+save_markers_to_tsv(markers, filename)
 
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
