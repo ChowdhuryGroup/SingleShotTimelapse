@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-filepath = "data/glass glass 458mw.tsv"
+filepath = "data/glass Glass 458mw.tsv"
 
 
 df = pd.read_csv(filepath, sep="\t")
@@ -54,13 +54,16 @@ position_polynomial = np.poly1d(coefficients)
 
 
 # Plot the original positions with fitted polynomial
-plt.scatter(df["time"], df["channel2X coord"], label="Original Data")
+plt.scatter(df["time"], df["channel2X coord"] / 4.04, label="Original Data")
 plt.plot(
-    df["time"], position_polynomial(df["time"]), label="Fitted Polynomial", color="red"
+    df["time"],
+    position_polynomial(df["time"]) / 4.04,
+    label="Fitted Polynomial",
+    color="red",
 )
 plt.xlabel("Time (ns)")
-plt.ylabel("velocity µm/s")
-plt.title("Shockwave velocity and Fitted Polynomial")
+plt.ylabel("Position (µm)")
+plt.title("Shockwave Position and Fitted Polynomial")
 plt.legend()
 plt.show()
 
@@ -86,7 +89,7 @@ plt.plot(
 )
 plt.xlabel("Time (ns)")
 plt.ylabel("Velocity (µm/ns)")
-plt.title("Single Shot Velocity vs. Image to Image velocity")
+plt.title("458mW in Glass Single Shot Velocity vs. Image to Image velocity")
 plt.legend()
 plt.show()
 

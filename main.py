@@ -383,17 +383,63 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
         index = (index - 1) % len(sorted_keys)
         update_display()
 
+    # def mark_features(event):
+    #     plt.ion()
+    #     key = sorted_keys[index]
+    #     if key in markers:
+    #         markers[key] = {}
+    #     for j in range(number_of_channels):
+    #         plt.figure()
+
+    #         # Display the image
+    #         plt.subplot(2, 1, 1)
+    #         plt.imshow(split_channels[key][0][j], cmap="gray")
+    #         plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
+
+    #         # Calculate and display the horizontal lineout integrated over the whole height
+    #         plt.subplot(2, 1, 2)
+    #         horizontal_lineout = split_channels[key][0][j].sum(axis=0)
+    #         plt.plot(horizontal_lineout)
+    #         plt.title("Horizontal Lineout Integrated Over Height")
+
+    #         # Get coordinates from user input
+    #         coords = plt.ginput(n=1, timeout=0)
+
+    #         plt.close()
+
+    #         if key not in markers:
+    #             markers[key] = {}
+    #         markers[key][j] = coords
+
     def mark_features(event):
         plt.ion()
         key = sorted_keys[index]
         if key in markers:
             markers[key] = {}
         for j in range(number_of_channels):
-            plt.figure()
+            fig = plt.figure()
+
+            # Set window position and size using wm_geometry
+            manager = plt.get_current_fig_manager()
+            manager.window.wm_geometry("+100+100")  # Set window position
+            manager.window.wm_geometry("800x600")  # Set window size
+
+            # Display the image
+            plt.subplot(2, 1, 1)
             plt.imshow(split_channels[key][0][j], cmap="gray")
             plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
+
+            # Calculate and display the horizontal lineout integrated over the whole height
+            plt.subplot(2, 1, 2)
+            horizontal_lineout = split_channels[key][0][j].sum(axis=0)
+            plt.plot(horizontal_lineout)
+            plt.title("Horizontal Lineout Integrated Over Height")
+
+            # Get coordinates from user input
             coords = plt.ginput(n=1, timeout=0)
+
             plt.close()
+
             if key not in markers:
                 markers[key] = {}
             markers[key][j] = coords
@@ -459,7 +505,7 @@ def create_file():
 # Save markers
 filename = create_file()
 print(filename)
-save_markers_to_tsv(markers, filename)
+# save_markers_to_tsv(markers, filename)
 
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
