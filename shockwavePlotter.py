@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-filepath = "data/glass Glass 458mw.tsv"
+filepath = "data/Ta 455mw shockwave.tsv"
 
 
 df = pd.read_csv(filepath, sep="\t")
@@ -84,7 +84,7 @@ plt.plot(
     df["time"].iloc[1:-1],
     velocity_in_single_image.iloc[1:-1] / 4.04,
     marker="o",
-    linestyle="-",
+    linestyle="",
     label="Single Shot Velocity",
 )
 plt.xlabel("Time (ns)")

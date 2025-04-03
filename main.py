@@ -432,6 +432,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
             # Calculate and display the horizontal lineout integrated over the whole height
             plt.subplot(2, 1, 2)
             horizontal_lineout = split_channels[key][0][j].sum(axis=0)
+            plt.xlim(0, split_channels[key][0][j].shape[1])
             plt.plot(horizontal_lineout)
             plt.title("Horizontal Lineout Integrated Over Height")
 
@@ -505,7 +506,7 @@ def create_file():
 # Save markers
 filename = create_file()
 print(filename)
-# save_markers_to_tsv(markers, filename)
+save_markers_to_tsv(markers, filename)
 
 
 # set each channel to the same contrast setting? Not sure if this is the right place to do it
