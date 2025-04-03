@@ -23,7 +23,7 @@ class ShockwaveData:
         velocity = position_diff / time_diff
         return velocity.iloc[1:-1]
 
-    def positionPolynomial(self, channel, degree=6):
+    def positionPolynomial(self, channel, degree=8):
         coefficients = np.polyfit(
             self.getTimes(), self.getChannelPositions(channel), degree
         )
@@ -34,7 +34,8 @@ class ShockwaveData:
 
     def singleImageVelocities(self, first_channel=1, last_channel=4):
         velocity_in_single_image = (
-            df[f"channel{first_channel}X coord"] - df[f"channel{last_channel}X coord"]
+            self.getChannelPositions(first_channel)
+            - self.getChannelPositions(last_channel)
         ) / (self.probeTimes[last_channel - 1] - self.probeTimes[first_channel - 1])
         return velocity_in_single_image
 
@@ -52,8 +53,18 @@ plt.plot(times, Ta455.positionPolynomial(1)(times))
 plt.plot(Ta455.getTimes(), Ta455.getChannelPositions(1), linestyle="", marker="o")
 plt.show()
 
-plt.plot(times, Ta455.velocityPolynomial(1))
-plt.plot(Ta455.getTimes(), Ta455.imageToImageVelocity(1))
+
+def plotVelocityvsSingleImage(data: ShockwaveData, channel: int):
+    plt.plot(times, data.velocityPolynomial(channel)(times))
+    plt.plot(
+        data.getTimes(),
+        data.singleImageVelocities(last_channel=channel),
+        marker="o",
+        linestyle="",
+    )
+
+
+plotVelocityvsSingleImage(Ta455, 1)
 
 # %%
 

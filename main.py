@@ -15,7 +15,7 @@ from tkinter import filedialog
 mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at least?)
 
 # User Inputs
-directory = "data/TA/455mw"
+directory = "data/TA/234mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 zero_time = 56
