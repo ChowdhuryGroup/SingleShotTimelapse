@@ -7,6 +7,56 @@ import numpy as np
 filepath = "data/Ta 455mw shockwave.tsv"
 
 
+class ShockwaveData:
+    def __init__(self, filepath, PixPerMicron=4.04):
+        self.df = pd.read_csv(filepath, sep="\t")
+        self.time = self.df["time"]
+        self.positions = self.df.iloc[:, 1:] / PixPerMicron
+        self.probeTimes = [0, 1, 2, 3]  # ns times of when probe channels arrive
+
+    def imageToImageVelocity(self, channel):
+        # calculates difference of position on "channel" from image 1 to image 3 divided by the time between image 1 and 3
+        time_diff = self.time.shift(-1) - self.time.shift(1)
+        position_diff = self.positions[f"channel{channel}X coord"].shift(
+            -1
+        ) - self.positions[f"channel{channel}X coord"].shift(1)
+        velocity = position_diff / time_diff
+        return velocity.iloc[1:-1]
+
+    def positionPolynomial(self, channel, degree=6):
+        coefficients = np.polyfit(
+            self.getTimes(), self.getChannelPositions(channel), degree
+        )
+        return np.poly1d(coefficients)
+
+    def velocityPolynomial(self, channel):
+        return np.polyder(self.positionPolynomial(channel))
+
+    def singleImageVelocities(self, first_channel=1, last_channel=4):
+        velocity_in_single_image = (
+            df[f"channel{first_channel}X coord"] - df[f"channel{last_channel}X coord"]
+        ) / (self.probeTimes[last_channel - 1] - self.probeTimes[first_channel - 1])
+        return velocity_in_single_image
+
+    def getChannelPositions(self, channel):
+        return self.positions[f"channel{channel}X coord"]
+
+    def getTimes(self):
+        return self.time
+
+
+filepath = "data/Ta 455mw shockwave.tsv"
+Ta455 = ShockwaveData(filepath)
+times = np.linspace(Ta455.getTimes().min(), Ta455.getTimes().max(), 100)
+plt.plot(times, Ta455.positionPolynomial(1)(times))
+plt.plot(Ta455.getTimes(), Ta455.getChannelPositions(1), linestyle="", marker="o")
+plt.show()
+
+plt.plot(times, Ta455.velocityPolynomial(1))
+plt.plot(Ta455.getTimes(), Ta455.imageToImageVelocity(1))
+
+# %%
+
 df = pd.read_csv(filepath, sep="\t")
 single_image_velocity = (df["channel1X coord"] - df["channel4X coord"]) / 4
 
