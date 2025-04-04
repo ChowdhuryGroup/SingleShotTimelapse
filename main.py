@@ -416,15 +416,30 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
         if key in markers:
             markers[key] = {}
         for j in range(number_of_channels):
-            fig = plt.figure()
+            fig = plt.figure(figsize=(10, 15))
 
             # Set window position and size using wm_geometry
             manager = plt.get_current_fig_manager()
             manager.window.wm_geometry("+100+100")  # Set window position
-            manager.window.wm_geometry("800x600")  # Set window size
+            manager.window.wm_geometry("800x900")  # Set window size
 
-            # Display the image
-            plt.subplot(2, 1, 1)
+            # Display full image
+            combined_image = np.vstack(
+                [split_channels[key][0][j] for j in range(number_of_channels)]
+            )
+            plt.subplot(3, 1, 1)
+            plt.axhline(
+                y=j * split_channels[key][0][j].shape[0]
+                + split_channels[key][0][j].shape[0] // 2,
+                color="red",
+                linestyle="--",
+                linewidth=0.5,
+            )
+            plt.imshow(combined_image, cmap="gray")
+            plt.title("Click desired feature on any graph. Keep it consistent in Y ")
+
+            # Display the cropped image
+            plt.subplot(3, 1, 2)
             # set the contrast to something readable
             vmin = split_channels[key][0][j][
                 :, 0 : split_channels[key][0][j].shape[1] - edge_positions[key][0]
@@ -433,11 +448,18 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
                 :, 0 : split_channels[key][0][j].shape[1] - edge_positions[key][0]
             ].max()
             plt.imshow(split_channels[key][0][j], vmin=vmin, vmax=vmax, cmap="gray")
+            plt.axhline(
+                y=split_channels[key][0][j].shape[0] // 2,
+                color="red",
+                linestyle="--",
+                linewidth=0.9,
+            )
+
             plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
             plt.clim()
 
             # Calculate and display the horizontal lineout integrated over the whole height
-            plt.subplot(2, 1, 2)
+            plt.subplot(3, 1, 3)
             horizontal_lineout = split_channels[key][0][j].sum(axis=0)
             plt.xlim(0, split_channels[key][0][j].shape[1])
             plt.plot(horizontal_lineout)
