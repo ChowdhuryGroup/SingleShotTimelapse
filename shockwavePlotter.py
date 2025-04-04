@@ -61,13 +61,14 @@ file2, intensity2 = "data/Ta 455mw shockwave.tsv", "Ta 5.51e15W/cm^2"
 file3, intensity3 = "data/Ta 234mw shockwave.tsv", "Ta 2.83e15W/cm^2"
 file4, intensity4 = "data/Ta 157mw shockwave.tsv", "Ta 1.90e15W/cm^2"
 
-# Ta520 = ShockwaveData(file1, name=intensity1)
+Ta520 = ShockwaveData(file1, name=intensity1)
 Ta455 = ShockwaveData(file2, name=intensity2)
 Ta234 = ShockwaveData(file3, name=intensity3)
 Ta157 = ShockwaveData(file4, name=intensity4)
 
-# sampleList = [Ta520, Ta455, Ta234, Ta157]
-sampleList = [Ta455, Ta234, Ta157]
+sampleList = [Ta520, Ta455, Ta234, Ta157]
+# sampleList = [Ta455, Ta234, Ta157]
+sampleList = [Ta520]
 # %%
 # Generation of plots
 
@@ -93,14 +94,19 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, color=None):
 
 def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
-    plt.plot(times, data.velocityPolynomial(channel)(times), color=color)
+    plt.plot(
+        times,
+        data.velocityPolynomial(channel)(times),
+        color=color,
+        label=f"{data.getName()} multi-image velocity",
+    )
 
     plt.plot(
         data.getTimes(),
         data.singleImageVelocities(last_channel=4),
         marker="o",
         linestyle="",
-        label=data.getName(),
+        label=f"{data.getName()} single-image velocity",
         color=color,
     )
     plt.legend()
