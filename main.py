@@ -10,12 +10,13 @@ import time
 import matplotlib as mpl
 import tkinter as tk
 from tkinter import filedialog
+from matplotlib.widgets import Slider
 
 
 mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at least?)
 
 # User Inputs
-directory = "data/TA/234mw"
+directory = "data/TA/520mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
 zero_time = 56
@@ -32,10 +33,50 @@ df = df[pd.to_numeric(df["time"], errors="coerce").notnull()]
 
 darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH).astype(np.float32)
 
+
+def sampleEdgeFinder(image, testEdge=False):
+    # Get sample edge:
+    # Sum the pixel values along the columns
+    column_sum = np.sum(image, axis=0)
+
+    # Define the window size
+    window_size = 20
+
+    # Calculate the gradient within the window
+    gradients = np.array(
+        [
+            np.gradient(column_sum[i : i + window_size])
+            for i in range(len(column_sum) - window_size + 1)
+        ]
+    )
+    max_gradients = np.max(np.abs(gradients), axis=1)
+
+    # Find the position of the biggest gradient
+    if not sample_is_glass:
+        # Search in the first 200 pixels
+        edge_position = (len(column_sum) - 200) + np.argmax(max_gradients[-200:])
+    else:
+        edge_position = np.argmax(max_gradients)
+
+    if testEdge:
+        fig = plt.figure()
+        plt.imshow(
+            before_image, cmap="gray", vmin=before_image.min(), vmax=before_image.max()
+        )
+        plt.axvline(x=edge_position, color="red", linestyle="--", label="Edge Position")
+        plt.title(f"Before Image with Edge Position for Trial {trial}")
+        plt.legend()
+        plt.show()
+
+    return edge_position
+
+
 before_images_by_time = {}
 during_images_by_time = {}
 normalized_images_by_time = {}
+raw_before_images = {}
 edge_positions = {}  # Pixel column that the sample edge is in
+
 
 # Iterate through each trial folder
 for trial in df["trial"]:
@@ -58,27 +99,10 @@ for trial in df["trial"]:
 
     normalized_image = during_image / before_image
 
-    # Get sample edge:
-    # Sum the pixel values along the columns
-    column_sum = np.sum(before_image, axis=0)
-
-    # Define the window size
-    window_size = 10
-
-    # Calculate the gradient within the window
-    gradients = np.array(
-        [
-            np.gradient(column_sum[i : i + window_size])
-            for i in range(len(column_sum) - window_size + 1)
-        ]
-    )
-    max_gradients = np.max(np.abs(gradients), axis=1)
-
-    # Find the position of the biggest gradient
-    edge_position = np.argmax(max_gradients)
+    # Get sample edge (uncomment when testing edge):
+    edge_position = sampleEdgeFinder(before_image, testEdge=False)
 
     # Center the images based on the edge position
-
     original_image_width = before_image.shape[0]
     shift = original_image_width - edge_position
 
@@ -90,7 +114,7 @@ for trial in df["trial"]:
         return image
 
     # Check if the sample is glass
-
+    raw_before_image = before_image
     if sample_is_glass:
         # Center the edge position with the whole image on display
         center_position = before_image.shape[0] // 2
@@ -146,11 +170,13 @@ for trial in df["trial"]:
         during_images_by_time[time_of_image] = [during_image]
         normalized_images_by_time[time_of_image] = [normalized_image]
         edge_positions[time_of_image] = [edge_position]
+        raw_before_images[time_of_image] = [raw_before_image]
     else:
         before_images_by_time[time_of_image].append(before_image)
         during_images_by_time[time_of_image].append(during_image)
         normalized_images_by_time[time_of_image].append(normalized_image)
         edge_positions[time_of_image].append(edge_position)
+        raw_before_images[time_of_image].append(raw_before_image)
 
 
 # Sort the keys
@@ -237,7 +263,8 @@ def showImages(imageDictionary, draw_line=True):
 
 # showImages(before_images_by_time, draw_line=False)
 # showImages(during_images_by_time, draw_line=False)
-# showImages(normalized_images_by_time, draw_line=False)
+# showImages(normalized_images_by_time, draw_line=True)
+# showImages(raw_before_images, draw_line=True)
 
 
 # Save normalized images
@@ -383,34 +410,6 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
         index = (index - 1) % len(sorted_keys)
         update_display()
 
-    # def mark_features(event):
-    #     plt.ion()
-    #     key = sorted_keys[index]
-    #     if key in markers:
-    #         markers[key] = {}
-    #     for j in range(number_of_channels):
-    #         plt.figure()
-
-    #         # Display the image
-    #         plt.subplot(2, 1, 1)
-    #         plt.imshow(split_channels[key][0][j], cmap="gray")
-    #         plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
-
-    #         # Calculate and display the horizontal lineout integrated over the whole height
-    #         plt.subplot(2, 1, 2)
-    #         horizontal_lineout = split_channels[key][0][j].sum(axis=0)
-    #         plt.plot(horizontal_lineout)
-    #         plt.title("Horizontal Lineout Integrated Over Height")
-
-    #         # Get coordinates from user input
-    #         coords = plt.ginput(n=1, timeout=0)
-
-    #         plt.close()
-
-    #         if key not in markers:
-    #             markers[key] = {}
-    #         markers[key][j] = coords
-
     def mark_features(event):
         plt.ion()
         key = sorted_keys[index]
@@ -426,8 +425,16 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
 
             # Display the image
             plt.subplot(2, 1, 1)
-            plt.imshow(split_channels[key][0][j], cmap="gray")
+            # set the contrast to something readable
+            vmin = split_channels[key][0][j][
+                :, 0 : split_channels[key][0][j].shape[1] - edge_positions[key][0]
+            ].min()
+            vmax = split_channels[key][0][j][
+                :, 0 : split_channels[key][0][j].shape[1] - edge_positions[key][0]
+            ].max()
+            plt.imshow(split_channels[key][0][j], vmin=vmin, vmax=vmax, cmap="gray")
             plt.title(f"Channel {j+1} at Time {round(key-j, 2)}")
+            plt.clim()
 
             # Calculate and display the horizontal lineout integrated over the whole height
             plt.subplot(2, 1, 2)
