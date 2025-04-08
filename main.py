@@ -17,18 +17,26 @@ mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at
 
 # User Inputs
 
+# folder containing trial numbers, dark field path
 PlasticTa187mw = ["data/PlasticTa/187mw", "data/PlasticTa/dark bkg187and505mw.tif"]
 PlasticTa460mw = ["data/PlasticTa/460mw", "data/PlasticTa/darkbkg460mw.tif"]
 PlasticTa505mw = ["data/PlasticTa/505mw", "data/PlasticTa/dark bkg187and505mw.tif"]
+transmission263mw = [
+    "data/glassTransmission/263mw",
+    "data/glassTransmission/bkg dark field lower power.tif",
+]
+transmission490mw = [
+    "data/glassTransmission/490mw",
+    "data/glassTransmission/bkg with pump unblocked higher power.tif",
+]
 
-directory = "data/PlasticTa/460mw"
-darkFieldPath = "data/glass/bkgWithFlash.tif"
-darkFieldPath = "data/TA/bkgCameraBlocked.tif"
-directory, darkFieldPath = PlasticTa187mw
+# SELECT FILE HERE
+directory, darkFieldPath = transmission263mw
 zero_time = 56
 sample_is_glass = False
+sample_is_transmission = True
 
-
+# file containing tsv of trial # and timing in ns
 tsv_file = os.path.join(directory, "timings.txt")
 
 # load all images to corresponding times
@@ -41,7 +49,17 @@ darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH).astype(np.float32)
 
 
 def sampleEdgeFinder(image, testEdge=False):
-    # Get sample edge:
+    """
+    Identifies the edge position in a given image by analyzing the gradient of pixel values along the columns.
+
+    Parameters:
+    image (numpy.ndarray): The input image as a 2D array of pixel values.
+    testEdge (bool, optional): If True, displays the image with the detected edge position. Default is False.
+
+    Returns:
+    int: The position of the detected edge along the columns.
+    """
+
     # Sum the pixel values along the columns
     column_sum = np.sum(image, axis=0)
 
@@ -146,7 +164,7 @@ for trial in df["trial"]:
         before_image = before_image[:, :crop_width]
         during_image = during_image[:, :crop_width]
         normalized_image = normalized_image[:, :crop_width]
-    else:
+    elif not sample_is_transmission:
         # Move the sample to the edge
         original_image_width = before_image.shape[0]
         shift = original_image_width - 60 - edge_position

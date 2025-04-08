@@ -60,15 +60,18 @@ file1, intensity1 = "data/Ta 520mw shockwave.tsv", "Ta 6.66e15W/cm^2"
 file2, intensity2 = "data/Ta 455mw shockwave.tsv", "Ta 5.51e15W/cm^2"
 file3, intensity3 = "data/Ta 234mw shockwave.tsv", "Ta 2.83e15W/cm^2"
 file4, intensity4 = "data/Ta 157mw shockwave.tsv", "Ta 1.90e15W/cm^2"
+file5, intensity5 = "data/plasticTa 505mw shockwave.tsv", "Plastic Ta "
 
 Ta520 = ShockwaveData(file1, name=intensity1)
 Ta455 = ShockwaveData(file2, name=intensity2)
 Ta234 = ShockwaveData(file3, name=intensity3)
 Ta157 = ShockwaveData(file4, name=intensity4)
+PlasticTa = ShockwaveData(file5, name=intensity5)
 
 sampleList = [Ta520, Ta455, Ta234, Ta157]
 # sampleList = [Ta455, Ta234, Ta157]
 sampleList = [Ta520]
+sampleList = [PlasticTa]
 # %%
 # Generation of plots
 
