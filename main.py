@@ -16,9 +16,15 @@ from matplotlib.widgets import Slider
 mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at least?)
 
 # User Inputs
-directory = "data/TA/520mw"
+
+PlasticTa187mw = ["data/PlasticTa/187mw", "data/PlasticTa/dark bkg187and505mw.tif"]
+PlasticTa460mw = ["data/PlasticTa/460mw", "data/PlasticTa/darkbkg460mw.tif"]
+PlasticTa505mw = ["data/PlasticTa/505mw", "data/PlasticTa/dark bkg187and505mw.tif"]
+
+directory = "data/PlasticTa/460mw"
 darkFieldPath = "data/glass/bkgWithFlash.tif"
 darkFieldPath = "data/TA/bkgCameraBlocked.tif"
+directory, darkFieldPath = PlasticTa187mw
 zero_time = 56
 sample_is_glass = False
 
