@@ -31,7 +31,7 @@ transmission490mw = [
 ]
 
 zerodeg = [
-    "/Users/conradkuz/Documents/SingleProbeTimelapse/data/2025-04-04",
+    "/Users/conradkuz/Docum`ents/SingleProbeTimelapse/data/2025-04-04",
     "data/2025-04-04/bkg probe blocked.tif",
 ]
 # SELECT FILE HERE
