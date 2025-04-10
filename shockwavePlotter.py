@@ -70,8 +70,8 @@ PlasticTa = ShockwaveData(file5, name=intensity5)
 
 sampleList = [Ta520, Ta455, Ta234, Ta157]
 # sampleList = [Ta455, Ta234, Ta157]
-sampleList = [Ta520]
-sampleList = [PlasticTa]
+sampleList = [Ta455, Ta234, Ta157]
+# sampleList = [Ta234]
 # %%
 # Generation of plots
 

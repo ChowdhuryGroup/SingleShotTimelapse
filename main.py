@@ -30,10 +30,15 @@ transmission490mw = [
     "data/glassTransmission/bkg with pump unblocked higher power.tif",
 ]
 
+zerodeg = [
+    "/Users/conradkuz/Documents/SingleProbeTimelapse/data/2025-04-04",
+    "data/2025-04-04/bkg probe blocked.tif",
+]
 # SELECT FILE HERE
-directory, darkFieldPath = transmission263mw
+directory, darkFieldPath = zerodeg
 zero_time = 56
-sample_is_glass = False
+# SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
+sample_is_transverse_glass = False
 sample_is_transmission = True
 
 # file containing tsv of trial # and timing in ns
@@ -45,7 +50,9 @@ df = pd.read_csv(tsv_file, sep="\t", header=0, names=["trial", "time"])
 # filter out lost timing trials
 df = df[pd.to_numeric(df["time"], errors="coerce").notnull()]
 
-darkbkg = cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH).astype(np.float32)
+darkbkg = np.clip(
+    cv2.imread(darkFieldPath, cv2.IMREAD_ANYDEPTH).astype(np.float32), 0.1, 65535
+)
 
 
 def sampleEdgeFinder(image, testEdge=False):
@@ -76,7 +83,7 @@ def sampleEdgeFinder(image, testEdge=False):
     max_gradients = np.max(np.abs(gradients), axis=1)
 
     # Find the position of the biggest gradient
-    if not sample_is_glass:
+    if not sample_is_transverse_glass:
         # Search in the first 200 pixels
         edge_position = (len(column_sum) - 200) + np.argmax(max_gradients[-200:])
     else:
@@ -121,7 +128,10 @@ for trial in df["trial"]:
     before_image = np.clip(before_image, 0.1, 65535)
     during_image = np.clip(during_image, 0.1, 65535)
 
-    normalized_image = during_image / before_image
+    # Main calculation to normalize images
+    normalized_image = (during_image - darkbkg) / np.clip(
+        (before_image - darkbkg), 0.001, 65535
+    )
 
     # Get sample edge (uncomment when testing edge):
     edge_position = sampleEdgeFinder(before_image, testEdge=False)
@@ -139,7 +149,7 @@ for trial in df["trial"]:
 
     # Check if the sample is glass
     raw_before_image = before_image
-    if sample_is_glass:
+    if sample_is_transverse_glass:
         # Center the edge position with the whole image on display
         center_position = before_image.shape[0] // 2
         shift = center_position - edge_position
@@ -325,77 +335,6 @@ for key in sorted_keys:
             split_channels[key].append(channels_in_image)
 
 
-def showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1):
-    sorted_keys = list(split_channels.keys())
-    index = 0
-
-    fig, axes = plt.subplots(1, number_of_channels + 1, figsize=(15, 5))
-    plt.subplots_adjust(bottom=0.2)
-
-    def update_display():
-        key = sorted_keys[index]
-        for j in range(number_of_channels):
-            axes[j].imshow(split_channels[key][0][j], cmap="gray")
-            axes[j].set_title(f"Channel {j+1} at Time {round(key-j,2)}ns")
-            axes[j].set_xticks(
-                np.arange(0, split_channels[key][0][j].shape[1], step=220)
-            )
-            axes[j].set_xticklabels(
-                [
-                    round(x * micron_per_pixel, 2)
-                    for x in np.arange(0, split_channels[key][0][j].shape[1], step=220)
-                ]
-            )
-            axes[j].set_yticks([])  # Hide y-axis
-            axes[j].set_xlabel("Distance (µm)")
-
-        combined_image = np.vstack(
-            [split_channels[key][0][j] for j in range(number_of_channels)]
-        )
-        axes[number_of_channels].imshow(combined_image, cmap="gray")
-        axes[number_of_channels].set_title(
-            f"Combined Image at Top Channel Time {round(key,2)}ns"
-        )
-        axes[number_of_channels].set_xticks(
-            np.arange(0, combined_image.shape[1], step=220)
-        )
-        axes[number_of_channels].set_xticklabels(
-            [
-                round(x * micron_per_pixel, 2)
-                for x in np.arange(0, combined_image.shape[1], step=220)
-            ]
-        )
-        axes[number_of_channels].set_xlabel("Distance (µm)")
-        axes[number_of_channels].set_yticks([])  # Hide y-axis
-
-        plt.draw()
-
-    def next_image(event):
-        nonlocal index
-        index = (index + 1) % len(sorted_keys)
-        update_display()
-
-    def prev_image(event):
-        nonlocal index
-        index = (index - 1) % len(sorted_keys)
-        update_display()
-
-    axprev = plt.axes([0.4, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.55, 0.05, 0.1, 0.075])
-    bnext = Button(axnext, "Next")
-    bprev = Button(axprev, "Previous")
-    bnext.on_clicked(next_image)
-    bprev.on_clicked(prev_image)
-
-    update_display()
-    plt.show()
-
-
-# Example usage
-# showChannelsAndComposite(split_channels, number_of_channels, micron_per_pixel=1 / 4.04)
-# showChannelsAndComposite(split_channels, number_of_channels)
-
-
 def showChannelsAndMarkFeatures(split_channels, number_of_channels):
     sorted_keys = list(split_channels.keys())
     index = 0
@@ -408,7 +347,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
         key = sorted_keys[index]
         for j in range(number_of_channels):
             axes[j].clear()
-            axes[j].imshow(split_channels[key][0][j], cmap="gray")
+            axes[j].imshow(split_channels[key][0][j], cmap="gray", vmin=0.1, vmax=1.5)
             axes[j].set_title(
                 f"Channel {j+1} at Time {round(key-timing_of_channels[j], 2)}"
             )
@@ -417,7 +356,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
             [split_channels[key][0][j] for j in range(number_of_channels)]
         )
         axes[number_of_channels].clear()
-        axes[number_of_channels].imshow(combined_image, cmap="gray")
+        axes[number_of_channels].imshow(combined_image, cmap="gray", vmin=0.1, vmax=1.5)
         axes[number_of_channels].set_title(
             f"Combined Image at Top Channel Time {round(key, 2)}"
         )
