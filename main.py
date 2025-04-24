@@ -34,8 +34,23 @@ zerodeg = [
     "/Users/conradkuz/Docum`ents/SingleProbeTimelapse/data/2025-04-04",
     "data/2025-04-04/bkg probe blocked.tif",
 ]
+
+singleChannelZeroDeg = [
+    "data/2025-04-09/singleChannelZeroOrder",
+    "data/2025-04-09/singleZeroPumpBlockedProbeBlocked.tif",
+]
+
+allChannelZeroOrder = [
+    "data/2025-04-09/allChannelZeroOrder",
+    "data/2025-04-09/singleZeroPumpBlockedProbeBlocked.tif",
+]
+firstNGTransmission = [
+    "data/2025-04-17/55.4A",
+    "data/2025-04-17/55.4A/002/2025 April 17 17_19_22.tif",
+]
+
 # SELECT FILE HERE
-directory, darkFieldPath = zerodeg
+directory, darkFieldPath = firstNGTransmission
 zero_time = 56
 # SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
 sample_is_transverse_glass = False
@@ -111,9 +126,9 @@ edge_positions = {}  # Pixel column that the sample edge is in
 
 # Iterate through each trial folder
 for trial in df["trial"]:
-    trial_folder = os.path.join(directory, str(trial).zfill(2))
+    trial_folder = os.path.join(directory, str(trial).zfill(3))
     image_files = [f for f in os.listdir(trial_folder) if f.endswith(".tif")]
-
+    print("TRIAL", trial)
     # Sort image files by date and time in the filename
     image_files.sort(
         key=lambda x: datetime.strptime(x.split("/")[-1], "%Y %B %d %H_%M_%S.tif")
@@ -132,6 +147,8 @@ for trial in df["trial"]:
     normalized_image = (during_image - darkbkg) / np.clip(
         (before_image - darkbkg), 0.001, 65535
     )
+
+    normalized_image = (during_image) / before_image
 
     # Get sample edge (uncomment when testing edge):
     edge_position = sampleEdgeFinder(before_image, testEdge=False)
@@ -247,6 +264,8 @@ def showAnmiation():
     plt.show()
 
 
+showAnmiation()
+
 # Find the edge of sample for each channel in the before image
 
 
@@ -297,7 +316,7 @@ def showImages(imageDictionary, draw_line=True):
 
 # showImages(before_images_by_time, draw_line=False)
 # showImages(during_images_by_time, draw_line=False)
-# showImages(normalized_images_by_time, draw_line=True)
+showImages(normalized_images_by_time, draw_line=False)
 # showImages(raw_before_images, draw_line=True)
 
 
@@ -310,8 +329,10 @@ def saveImages(imageDictionary, save_path):
 
 
 save_path = directory + "Compiled Images"
-# os.makedirs(save_path)
-# saveImages(normalized_images_by_time, save_path)
+
+# Uncomment this to save the divided images
+#os.makedirs(save_path)
+#saveImages(normalized_images_by_time, save_path)
 
 
 # Crop all images to each channel

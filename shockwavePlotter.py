@@ -95,6 +95,7 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, color=None):
     plt.title("Propogation of Shockwave")
 
 
+# Need to output numpy lists
 # Justin was here 4/10/25
 def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
