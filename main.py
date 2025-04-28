@@ -18,9 +18,21 @@ mpl.use("TkAgg")  # Need this to work when selecting points in ginput (on mac at
 # User Inputs
 
 # folder containing trial numbers, dark field path
-PlasticTa187mw = ["data/PlasticTa/187mw", "data/PlasticTa/dark bkg187and505mw.tif"]
-PlasticTa460mw = ["data/PlasticTa/460mw", "data/PlasticTa/darkbkg460mw.tif"]
-PlasticTa505mw = ["data/PlasticTa/505mw", "data/PlasticTa/dark bkg187and505mw.tif"]
+Ta_190e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\TA\Ta 1.90e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+Ta_283e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\TA\Ta 2.83e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+Ta_551e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\TA\Ta 5.51e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+Ta_666e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\TA\Ta 6.66e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+
+Plastic_256e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\Plastic 2.56e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+Plastic_653e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\Plastic 6.53e15\plastic 460mw", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+Plastic_692e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\Plastic 6.92e15", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic on Ta\dark bkg.tif"]
+
+NG_Ta_102e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\Ta 1.02e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
+NG_Ta_169e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\Ta 1.69e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
+
+NG_Plastic_102e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng Plastic on Ta\Plastic 1.02e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
+NG_Plastic_159e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng Plastic on Ta\Plastic 1.59e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
+
 transmission263mw = [
     "data/glassTransmission/263mw",
     "data/glassTransmission/bkg dark field lower power.tif",
@@ -35,11 +47,12 @@ zerodeg = [
     "data/2025-04-04/bkg probe blocked.tif",
 ]
 # SELECT FILE HERE
-directory, darkFieldPath = zerodeg
-zero_time = 56
+directory, darkFieldPath = NG_Plastic_102e9
+zero_time = 56 #ns
 # SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
 sample_is_transverse_glass = False
-sample_is_transmission = True
+sample_is_transmission = False
+flipped_sample = True
 
 # file containing tsv of trial # and timing in ns
 tsv_file = os.path.join(directory, "timings.txt")
@@ -71,7 +84,7 @@ def sampleEdgeFinder(image, testEdge=False):
     column_sum = np.sum(image, axis=0)
 
     # Define the window size
-    window_size = 20
+    window_size = 100
 
     # Calculate the gradient within the window
     gradients = np.array(
@@ -84,8 +97,9 @@ def sampleEdgeFinder(image, testEdge=False):
 
     # Find the position of the biggest gradient
     if not sample_is_transverse_glass:
-        # Search in the first 200 pixels
-        edge_position = (len(column_sum) - 200) + np.argmax(max_gradients[-200:])
+        # Search in the first x pixels
+        edgescanwidth = 400
+        edge_position = (len(column_sum) - edgescanwidth) + np.argmax(max_gradients[-edgescanwidth:])
     else:
         edge_position = np.argmax(max_gradients)
 
@@ -111,7 +125,7 @@ edge_positions = {}  # Pixel column that the sample edge is in
 
 # Iterate through each trial folder
 for trial in df["trial"]:
-    trial_folder = os.path.join(directory, str(trial).zfill(2))
+    trial_folder = os.path.join(directory, str(trial).zfill(3)) #switch to 2 if you need to start from 01 instead of 001
     image_files = [f for f in os.listdir(trial_folder) if f.endswith(".tif")]
 
     # Sort image files by date and time in the filename
@@ -125,6 +139,11 @@ for trial in df["trial"]:
     before_image = cv2.imread(before_image_path, cv2.IMREAD_ANYDEPTH).astype(np.float32)
     during_image = cv2.imread(during_image_path, cv2.IMREAD_ANYDEPTH).astype(np.float32)
 
+    if flipped_sample:
+        before_image = cv2.flip(before_image, 1)
+        during_image = cv2.flip(during_image, 1)
+        #change the 1 to a zero
+
     before_image = np.clip(before_image, 0.1, 65535)
     during_image = np.clip(during_image, 0.1, 65535)
 
@@ -132,6 +151,7 @@ for trial in df["trial"]:
     normalized_image = (during_image - darkbkg) / np.clip(
         (before_image - darkbkg), 0.001, 65535
     )
+    normalized_image = during_image/before_image
 
     # Get sample edge (uncomment when testing edge):
     edge_position = sampleEdgeFinder(before_image, testEdge=False)

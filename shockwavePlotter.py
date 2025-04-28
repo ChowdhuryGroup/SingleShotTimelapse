@@ -56,24 +56,23 @@ class ShockwaveData:
 
 # %%
 # Loading in Data Files
-file1, intensity1 = "data/Ta 520mw shockwave.tsv", "Ta 6.66e15W/cm^2"
-file2, intensity2 = "data/Ta 455mw shockwave.tsv", "Ta 5.51e15W/cm^2"
-file3, intensity3 = "data/Ta 234mw shockwave.tsv", "Ta 2.83e15W/cm^2"
-file4, intensity4 = "data/Ta 157mw shockwave.tsv", "Ta 1.90e15W/cm^2"
-file5, intensity5 = "data/plasticTa 505mw shockwave.tsv", "Plastic Ta "
+file1, intensity1 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_190e15.tsv", "Ta 1.90e15W/cm^2"
+#file2, intensity2 = "data/Ta 455mw shockwave.tsv", "Ta 5.51e15W/cm^2"
+#file3, intensity3 = "data/Ta 234mw shockwave.tsv", "Ta 2.83e15W/cm^2"
+#file4, intensity4 = "data/Ta 157mw shockwave.tsv", "Ta 1.90e15W/cm^2"
+#file5, intensity5 = "data/plasticTa 505mw shockwave.tsv", "Plastic Ta "
 
-Ta520 = ShockwaveData(file1, name=intensity1)
-Ta455 = ShockwaveData(file2, name=intensity2)
-Ta234 = ShockwaveData(file3, name=intensity3)
-Ta157 = ShockwaveData(file4, name=intensity4)
-PlasticTa = ShockwaveData(file5, name=intensity5)
+Ta_190e15 = ShockwaveData(file1, name=intensity1)
 
-sampleList = [Ta520, Ta455, Ta234, Ta157]
+
+sampleList = [Ta_190e15,Ta_190e15]
 # sampleList = [Ta455, Ta234, Ta157]
-sampleList = [Ta455, Ta234, Ta157]
+#sampleList = [Ta455, Ta234, Ta157]
 # sampleList = [Ta234]
 # %%
 # Generation of plots
+
+
 
 colors = ["b", "g", "r", "c", "m", "y", "k"]
 
@@ -82,8 +81,8 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
     plt.plot(times, data.positionPolynomial(1)(times), color=color)
     plt.plot(
-        data.getTimes(),
-        data.getChannelPositions(1),
+        data.getTimes().to_numpy(),
+        data.getChannelPositions(1).to_numpy(),
         linestyle="",
         marker="o",
         label=data.getName(),
@@ -105,8 +104,8 @@ def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     )
 
     plt.plot(
-        data.getTimes(),
-        data.singleImageVelocities(last_channel=4),
+        data.getTimes().to_numpy(),
+        data.singleImageVelocities(last_channel=4).to_numpy(),
         marker="o",
         linestyle="",
         label=f"{data.getName()} single-image velocity",
@@ -121,8 +120,8 @@ def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
 def plotAllChannelPositions(data: ShockwaveData):
     for i in range(1, data.getNumberOfChannels() + 1):
         plt.plot(
-            data.getTimes(),
-            data.getChannelPositions(i),
+            data.getTimes().to_numpy(),
+            data.getChannelPositions(i).to_numpy(),
             marker="o",
             linestyle="",
             label=f"Channel {i}",
