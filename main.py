@@ -43,9 +43,24 @@ transmission490mw = [
 ]
 
 zerodeg = [
-    "/Users/conradkuz/Documents/SingleProbeTimelapse/data/2025-04-04",
+    "/Users/conradkuz/Docum`ents/SingleProbeTimelapse/data/2025-04-04",
     "data/2025-04-04/bkg probe blocked.tif",
 ]
+
+singleChannelZeroDeg = [
+    "data/2025-04-09/singleChannelZeroOrder",
+    "data/2025-04-09/singleZeroPumpBlockedProbeBlocked.tif",
+]
+
+allChannelZeroOrder = [
+    "data/2025-04-09/allChannelZeroOrder",
+    "data/2025-04-09/singleZeroPumpBlockedProbeBlocked.tif",
+]
+firstNGTransmission = [
+    "data/2025-04-17/55.4A",
+    "data/2025-04-17/55.4A/002/2025 April 17 17_19_22.tif",
+]
+
 # SELECT FILE HERE
 directory, darkFieldPath = NG_Plastic_102e9
 zero_time = 56 #ns
@@ -127,7 +142,7 @@ edge_positions = {}  # Pixel column that the sample edge is in
 for trial in df["trial"]:
     trial_folder = os.path.join(directory, str(trial).zfill(3)) #switch to 2 if you need to start from 01 instead of 001
     image_files = [f for f in os.listdir(trial_folder) if f.endswith(".tif")]
-
+    print("TRIAL", trial)
     # Sort image files by date and time in the filename
     image_files.sort(
         key=lambda x: datetime.strptime(x.split("/")[-1], "%Y %B %d %H_%M_%S.tif")
@@ -267,6 +282,8 @@ def showAnmiation():
     plt.show()
 
 
+showAnmiation()
+
 # Find the edge of sample for each channel in the before image
 
 
@@ -317,7 +334,7 @@ def showImages(imageDictionary, draw_line=True):
 
 # showImages(before_images_by_time, draw_line=False)
 # showImages(during_images_by_time, draw_line=False)
-# showImages(normalized_images_by_time, draw_line=True)
+showImages(normalized_images_by_time, draw_line=False)
 # showImages(raw_before_images, draw_line=True)
 
 
@@ -330,8 +347,10 @@ def saveImages(imageDictionary, save_path):
 
 
 save_path = directory + "Compiled Images"
-# os.makedirs(save_path)
-# saveImages(normalized_images_by_time, save_path)
+
+# Uncomment this to save the divided images
+#os.makedirs(save_path)
+#saveImages(normalized_images_by_time, save_path)
 
 
 # Crop all images to each channel
