@@ -62,7 +62,7 @@ firstNGTransmission = [
 ]
 
 # SELECT FILE HERE
-directory, darkFieldPath = NG_Plastic_102e9
+directory, darkFieldPath = NG_Ta_169e9
 zero_time = 56 #ns
 # SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
 sample_is_transverse_glass = False
@@ -97,7 +97,6 @@ def sampleEdgeFinder(image, testEdge=False):
 
     # Sum the pixel values along the columns
     column_sum = np.sum(image, axis=0)
-
     # Define the window size
     window_size = 100
 
@@ -113,20 +112,34 @@ def sampleEdgeFinder(image, testEdge=False):
     # Find the position of the biggest gradient
     if not sample_is_transverse_glass:
         # Search in the first x pixels
-        edgescanwidth = 400
+        edgescanwidth = 400 #lower this to 100 for Ta, 400 for Ng on Tato have correct edge of Ta be the zero
         edge_position = (len(column_sum) - edgescanwidth) + np.argmax(max_gradients[-edgescanwidth:])
     else:
         edge_position = np.argmax(max_gradients)
 
     if testEdge:
-        fig = plt.figure()
-        plt.imshow(
-            before_image, cmap="gray", vmin=before_image.min(), vmax=before_image.max()
-        )
+        # Show image and get user click
+        plt.imshow(image, cmap="gray", vmin=image.min(), vmax=image.max())
         plt.axvline(x=edge_position, color="red", linestyle="--", label="Edge Position")
-        plt.title(f"Before Image with Edge Position for Trial {trial}")
-        plt.legend()
-        plt.show()
+        plt.title("Click to set edge position")
+        click = plt.ginput(1)  # Wait for one click
+        plt.close()
+
+        if click:
+            edge_position = int(round(click[0][0]))  # Use x-coordinate
+        print(edge_position)
+
+    # if testEdge:
+
+
+    #     fig = plt.figure()
+    #     plt.imshow(
+    #         before_image, cmap="gray", vmin=before_image.min(), vmax=before_image.max()
+    #     )
+    #     plt.axvline(x=edge_position, color="red", linestyle="--", label="Edge Position")
+    #     plt.title(f"Before Image with Edge Position for Trial {trial}")
+    #     plt.legend()
+    #     plt.show()
 
     return edge_position
 
@@ -140,6 +153,7 @@ edge_positions = {}  # Pixel column that the sample edge is in
 
 # Iterate through each trial folder
 for trial in df["trial"]:
+    print(trial)
     trial_folder = os.path.join(directory, str(trial).zfill(3)) #switch to 2 if you need to start from 01 instead of 001
     image_files = [f for f in os.listdir(trial_folder) if f.endswith(".tif")]
     print("TRIAL", trial)
@@ -169,7 +183,7 @@ for trial in df["trial"]:
     normalized_image = during_image/before_image
 
     # Get sample edge (uncomment when testing edge):
-    edge_position = sampleEdgeFinder(before_image, testEdge=False)
+    edge_position = sampleEdgeFinder(before_image, testEdge=True)
 
     # Center the images based on the edge position
     original_image_width = before_image.shape[0]
@@ -282,7 +296,7 @@ def showAnmiation():
     plt.show()
 
 
-showAnmiation()
+#showAnmiation()
 
 # Find the edge of sample for each channel in the before image
 
@@ -334,7 +348,7 @@ def showImages(imageDictionary, draw_line=True):
 
 # showImages(before_images_by_time, draw_line=False)
 # showImages(during_images_by_time, draw_line=False)
-showImages(normalized_images_by_time, draw_line=False)
+#showImages(normalized_images_by_time, draw_line=False)
 # showImages(raw_before_images, draw_line=True)
 
 
@@ -350,7 +364,7 @@ save_path = directory + "Compiled Images"
 
 # Uncomment this to save the divided images
 #os.makedirs(save_path)
-#saveImages(normalized_images_by_time, save_path)
+#saveImages(normalized_images_by_time, save_path) #IF YOU want to save the images, uncomment this
 
 
 # Crop all images to each channel

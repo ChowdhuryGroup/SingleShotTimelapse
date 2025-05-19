@@ -3,7 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import cycler
 import numpy as np
+from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score
+import math
 
+ro = 1.293 #kg/m^3
 
 # %%
 # Class to handle loading and fitting of positions
@@ -13,7 +17,7 @@ class ShockwaveData:
         self.time = self.df["time"]
         self.positions = self.df.iloc[:, 1:] / PixPerMicron
         self.numberChannels = self.positions.shape[1]
-        self.probeTimes = [0, 1, 2, 3]  # ns times of when probe channels arrive
+        self.probeTimes = [3, 2, 1, 0]  # ns times of when probe channels arrive
         self.name = name if name is not None else filepath
 
     def imageToImageVelocity(self, channel):
@@ -25,7 +29,7 @@ class ShockwaveData:
         velocity = position_diff / time_diff
         return velocity.iloc[1:-1]
 
-    def positionPolynomial(self, channel, degree=3):
+    def positionPolynomial(self, channel, degree=3): #this was degree three
         coefficients = np.polyfit(
             self.getTimes(), self.getChannelPositions(channel), degree
         )
@@ -44,8 +48,8 @@ class ShockwaveData:
     def getChannelPositions(self, channel):
         return self.positions[f"channel{channel}X coord"]
 
-    def getTimes(self):
-        return self.time
+    def getTimes(self,channel=1):
+        return self.time+self.probeTimes[channel]
 
     def getName(self):
         return self.name
@@ -57,22 +61,81 @@ class ShockwaveData:
 # %%
 # Loading in Data Files
 file1, intensity1 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_190e15.tsv", "Ta 1.90e15W/cm^2"
-#file2, intensity2 = "data/Ta 455mw shockwave.tsv", "Ta 5.51e15W/cm^2"
-#file3, intensity3 = "data/Ta 234mw shockwave.tsv", "Ta 2.83e15W/cm^2"
-#file4, intensity4 = "data/Ta 157mw shockwave.tsv", "Ta 1.90e15W/cm^2"
-#file5, intensity5 = "data/plasticTa 505mw shockwave.tsv", "Plastic Ta "
+file2, intensity2 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_283e15.tsv", "Ta 2.83e15W/cm^2"
+file3, intensity3 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_551e15.tsv", "Ta 5.51e15W/cm^2"
+file4, intensity4 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_256e15.tsv", "Plastic 2.56e15W/cm^2"
+file5, intensity5 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_653e15.tsv", "Plastic 6.53e15W/cm^2"
+file6, intensity6 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_692e15.tsv", "Plastic 6.92e15W/cm^2"
+file7, intensity7 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_102e9.tsv", "Ng Ta 1.02e9W/cm^2"
+file8, intensity8 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_169e9.tsv", "Ng Ta 1.69e9W/cm^2"
+file9, intensity9 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_102e9.tsv", "Ng Plastic 1.02e9W/cm^2"
+file10, intensity10 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_159e9.tsv", "Ng Plastic 1.59e9W/cm^2"
+
 
 Ta_190e15 = ShockwaveData(file1, name=intensity1)
+Ta_283e15 = ShockwaveData(file2, name=intensity2)
+Ta_551e15 = ShockwaveData(file3, name=intensity3)
+Plastic_256e15 = ShockwaveData(file4, name=intensity4)
+Plastic_653e15 = ShockwaveData(file5, name=intensity5)
+Plastic_692e15 = ShockwaveData(file6, name=intensity6)
+Ng_Ta_102e9 = ShockwaveData(file7, name=intensity7,PixPerMicron=4.5429)
+Ng_Ta_169e9 = ShockwaveData(file8, name=intensity8,PixPerMicron=4.5429)
+Ng_plastic_102e9 = ShockwaveData(file9, name=intensity9,PixPerMicron=4.5429)
+Ng_plastic_159e9 = ShockwaveData(file10, name=intensity10,PixPerMicron=4.5429)
 
+t_s = Plastic_653e15.getTimes().to_numpy() * 1e-9
+log_t = np.log(t_s)
 
-sampleList = [Ta_190e15,Ta_190e15]
-# sampleList = [Ta455, Ta234, Ta157]
-#sampleList = [Ta455, Ta234, Ta157]
+dist = Plastic_653e15.getChannelPositions(2).to_numpy() * 1e-6
+log_dist = np.log(dist) #NEED to make sure you remove weird distances, before the true zero time
+
+#print(Ta_190e15.getTimes().to_numpy())
+print(t_s)
+#print(Ta_190e15.getChannelPositions(2).to_numpy())
+print(dist)
+#print(log_dist)
+#print(log_t)
+#print (Ta_551e15.getChannelPositions(1).to_numpy())
+#print (Ta_551e15.getChannelPositions(2).to_numpy())
+
+#exit()
+
+sampleList = [Ta_190e15,Ta_283e15,Ta_551e15]
+#sampleList = [Plastic_256e15, Plastic_653e15, Plastic_692e15]
+#sampleList = [Ta_190e15,Ta_283e15,Ta_551e15,Ng_Ta_102e9,Ng_Ta_169e9]
+#sampleList = [Plastic_256e15, Plastic_653e15, Plastic_692e15,Ng_plastic_102e9,Ng_plastic_159e9]
+#sampleList = [Ng_Ta_102e9,Ng_Ta_169e9,Ng_plastic_102e9,Ng_plastic_159e9]
+#sampleList = [Ng_plastic_102e9,Ng_plastic_159e9]
 # sampleList = [Ta234]
 # %%
 # Generation of plots
 
 
+def func(log_t, C, m):
+    return (C + m*log_t)
+p0 = np.array([1.0e-6,3.]) #initial guesses for the coefficients
+
+'curve_fit(f, xdata, ydata, p0=None)'
+
+popt,pcov = curve_fit(func,log_t,log_dist,p0,maxfev = 10000)
+print('coeff are:',popt)
+
+m = popt[1]
+Beta = 2/m - 2
+print(f"beta = {Beta}")
+
+'sklearn.metrics.r2_score(y_true, y_pred)'
+r2 = r2_score(log_dist,func(log_t,*popt))
+print('r^2 = ', r2)
+
+plt.plot(log_t,log_dist,label='data',c='r',marker="o",linestyle="")
+plt.plot(log_t, func(log_t, *popt),label='fit',c='k')
+plt.xlabel('log(time) [log(s)]')
+plt.ylabel('log(distance) [log(m)]')
+plt.legend(loc='best')
+plt.show()
+
+exit()
 
 colors = ["b", "g", "r", "c", "m", "y", "k"]
 
