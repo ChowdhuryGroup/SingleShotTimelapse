@@ -62,7 +62,7 @@ firstNGTransmission = [
 ]
 
 # SELECT FILE HERE
-directory, darkFieldPath = NG_Ta_169e9
+directory, darkFieldPath = NG_Plastic_102e9
 zero_time = 56 #ns
 # SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
 sample_is_transverse_glass = False
@@ -183,7 +183,7 @@ for trial in df["trial"]:
     normalized_image = during_image/before_image
 
     # Get sample edge (uncomment when testing edge):
-    edge_position = sampleEdgeFinder(before_image, testEdge=True)
+    edge_position = sampleEdgeFinder(before_image, testEdge=True) #Set this to true to manually set the edge
 
     # Center the images based on the edge position
     original_image_width = before_image.shape[0]

@@ -29,7 +29,7 @@ class ShockwaveData:
         velocity = position_diff / time_diff
         return velocity.iloc[1:-1]
 
-    def positionPolynomial(self, channel, degree=3): #this was degree three
+    def positionPolynomial(self, channel, degree=1): #this was degree three
         coefficients = np.polyfit(
             self.getTimes(), self.getChannelPositions(channel), degree
         )
@@ -83,16 +83,16 @@ Ng_Ta_169e9 = ShockwaveData(file8, name=intensity8,PixPerMicron=4.5429)
 Ng_plastic_102e9 = ShockwaveData(file9, name=intensity9,PixPerMicron=4.5429)
 Ng_plastic_159e9 = ShockwaveData(file10, name=intensity10,PixPerMicron=4.5429)
 
-t_s = Plastic_653e15.getTimes().to_numpy() * 1e-9
+t_s = Ng_Ta_169e9.getTimes().to_numpy() * 1e-9
 log_t = np.log(t_s)
 
-dist = Plastic_653e15.getChannelPositions(2).to_numpy() * 1e-6
+dist = Ng_Ta_169e9.getChannelPositions(2).to_numpy() * 1e-6
 log_dist = np.log(dist) #NEED to make sure you remove weird distances, before the true zero time
 
 #print(Ta_190e15.getTimes().to_numpy())
-print(t_s)
+#print(t_s)
 #print(Ta_190e15.getChannelPositions(2).to_numpy())
-print(dist)
+#print(dist)
 #print(log_dist)
 #print(log_t)
 #print (Ta_551e15.getChannelPositions(1).to_numpy())
@@ -100,42 +100,42 @@ print(dist)
 
 #exit()
 
-sampleList = [Ta_190e15,Ta_283e15,Ta_551e15]
+sampleList = [Ta_551e15,Ta_283e15, Ta_190e15, Plastic_692e15, Plastic_653e15]
 #sampleList = [Plastic_256e15, Plastic_653e15, Plastic_692e15]
 #sampleList = [Ta_190e15,Ta_283e15,Ta_551e15,Ng_Ta_102e9,Ng_Ta_169e9]
-#sampleList = [Plastic_256e15, Plastic_653e15, Plastic_692e15,Ng_plastic_102e9,Ng_plastic_159e9]
-#sampleList = [Ng_Ta_102e9,Ng_Ta_169e9,Ng_plastic_102e9,Ng_plastic_159e9]
+#sampleList = [Plastic_653e15, Plastic_692e15,Ng_plastic_102e9,Ng_plastic_159e9]
+#sampleList = [Ng_Ta_169e9, Ng_Ta_102e9, Ng_plastic_159e9, Ng_plastic_102e9]
 #sampleList = [Ng_plastic_102e9,Ng_plastic_159e9]
 # sampleList = [Ta234]
 # %%
 # Generation of plots
 
 
-def func(log_t, C, m):
-    return (C + m*log_t)
-p0 = np.array([1.0e-6,3.]) #initial guesses for the coefficients
+#def func(log_t, C, m):
+#    return (C + m*log_t)
+#p0 = np.array([1.0e-6,3.]) #initial guesses for the coefficients
 
 'curve_fit(f, xdata, ydata, p0=None)'
 
-popt,pcov = curve_fit(func,log_t,log_dist,p0,maxfev = 10000)
-print('coeff are:',popt)
+#popt,pcov = curve_fit(func,log_t,log_dist,p0,maxfev = 10000)
+#print('coeff are:',popt)
 
-m = popt[1]
-Beta = 2/m - 2
-print(f"beta = {Beta}")
+#m = popt[1]
+#Beta = 2/m - 2
+#print(f"beta = {Beta}")
 
-'sklearn.metrics.r2_score(y_true, y_pred)'
-r2 = r2_score(log_dist,func(log_t,*popt))
-print('r^2 = ', r2)
+#'sklearn.metrics.r2_score(y_true, y_pred)'
+#r2 = r2_score(log_dist,func(log_t,*popt))
+#print('r^2 = ', r2)
 
-plt.plot(log_t,log_dist,label='data',c='r',marker="o",linestyle="")
-plt.plot(log_t, func(log_t, *popt),label='fit',c='k')
-plt.xlabel('log(time) [log(s)]')
-plt.ylabel('log(distance) [log(m)]')
-plt.legend(loc='best')
-plt.show()
+#plt.plot(log_t,log_dist,label='data',c='r',marker="o",linestyle="")
+#plt.plot(log_t, func(log_t, *popt),label='fit',c='k')
+#plt.xlabel('log(time) [log(s)]')
+#plt.ylabel('log(distance) [log(m)]')
+#plt.legend(loc='best')
+#plt.show()
 
-exit()
+#exit()
 
 colors = ["b", "g", "r", "c", "m", "y", "k"]
 
@@ -154,7 +154,7 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, color=None):
     plt.legend()
     plt.xlabel("Time (ns)")
     plt.ylabel("Position (µm)")
-    plt.title("Propogation of Shockwave")
+    plt.title("Propagation of Shockwave")
 
 
 # Need to output numpy lists
@@ -209,6 +209,60 @@ plt.show()
 for i, shockwavedata in enumerate(sampleList):
     plotVelocityvsSingleImage(shockwavedata, 1, color=colors[i])
 plt.show()
+
+
+
+# %% Fit and plot log-log distance vs. time for all samples
+
+def log_log_fit_and_plot(samples, channel=2):
+    plt.figure(figsize=(10, 6))
+
+    for i, sample in enumerate(samples):
+        times = sample.getTimes(channel).to_numpy() * 1e-9  # in seconds
+        dists = sample.getChannelPositions(channel).to_numpy() * 1e-6  # in meters
+
+        # Remove non-positive values
+        valid = (times > 0) & (dists > 0)
+        times = times[valid]
+        dists = dists[valid]
+
+        if len(times) < 3:
+            print(f"Skipping {sample.getName()} due to insufficient valid data points.")
+            continue
+
+        log_t = np.log(times)
+        log_d = np.log(dists)
+
+        # Fit log-log data
+        def func(log_t, C, m):
+            return C + m * log_t
+
+        p0 = [1.0e-6, 3]
+        try:
+            popt, pcov = curve_fit(func, log_t, log_d, p0=p0, maxfev=10000)
+            m = popt[1]
+            beta = 2 / m - 2
+            r2 = r2_score(log_d, func(log_t, *popt))
+
+            print(f"{sample.getName()} — C = {popt[0]:.3f}, m = {m:.3f}, β = {beta:.3f}, R² = {r2:.4f}")
+
+            # Plot
+            color = colors[i % len(colors)]
+            plt.plot(log_t, log_d, marker='o', linestyle='', label=f"{sample.getName()} data", color=color)
+            plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit", color=color)
+        except RuntimeError:
+            print(f"Fit failed for {sample.getName()}.")
+
+    plt.xlabel("log(time) [log(s)]")
+    plt.ylabel("log(distance) [log(m)]")
+    plt.title("log-log Fit of Shockwave Propagation")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+log_log_fit_and_plot(sampleList, channel=2)
 
 # %%
 # can calculate acceleration at some point too
