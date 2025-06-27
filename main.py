@@ -33,6 +33,13 @@ NG_Ta_169e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energie
 NG_Plastic_102e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng Plastic on Ta\Plastic 1.02e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
 NG_Plastic_159e9 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng Plastic on Ta\Plastic 1.59e9", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng TA\03\all blocked.tif"]
 
+Transv_Glass_554e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\458mw", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\camera blockedbkg.tif"]
+Transv_Glass_190e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\140mw", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\camera blockedbkg.tif"]
+
+Transm_Glass_360e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\Transmission\490mw", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\Transmission\bkg dark field lower power.tif"]
+Transm_Glass_193e15 = [r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\Transmission\263mw", r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Glass 0328\Transmission\bkg dark field lower power.tif"]
+
+
 transmission263mw = [
     "data/glassTransmission/263mw",
     "data/glassTransmission/bkg dark field lower power.tif",
@@ -62,12 +69,12 @@ firstNGTransmission = [
 ]
 
 # SELECT FILE HERE
-directory, darkFieldPath = NG_Plastic_102e9
+directory, darkFieldPath = Ta_283e15
 zero_time = 56 #ns
 # SELECT TYPE TO USE - DETERMINES SAMPLE EDGE POSITIONING
 sample_is_transverse_glass = False
 sample_is_transmission = False
-flipped_sample = True
+flipped_sample = False
 
 # file containing tsv of trial # and timing in ns
 tsv_file = os.path.join(directory, "timings.txt")
@@ -154,7 +161,7 @@ edge_positions = {}  # Pixel column that the sample edge is in
 # Iterate through each trial folder
 for trial in df["trial"]:
     print(trial)
-    trial_folder = os.path.join(directory, str(trial).zfill(3)) #switch to 2 if you need to start from 01 instead of 001
+    trial_folder = os.path.join(directory, str(trial).zfill(2)) #switch to 2 if you need to start from 01 instead of 001
     image_files = [f for f in os.listdir(trial_folder) if f.endswith(".tif")]
     print("TRIAL", trial)
     # Sort image files by date and time in the filename
@@ -183,7 +190,7 @@ for trial in df["trial"]:
     normalized_image = during_image/before_image
 
     # Get sample edge (uncomment when testing edge):
-    edge_position = sampleEdgeFinder(before_image, testEdge=True) #Set this to true to manually set the edge
+    edge_position = sampleEdgeFinder(before_image, testEdge=False) #Set this to true to manually set the edge
 
     # Center the images based on the edge position
     original_image_width = before_image.shape[0]
@@ -483,6 +490,7 @@ def showChannelsAndMarkFeatures(split_channels, number_of_channels):
 
             # Get coordinates from user input
             coords = plt.ginput(n=1, timeout=0)
+            print(coords)
 
             plt.close()
 

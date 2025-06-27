@@ -1,4 +1,3 @@
-# %%
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import cycler
@@ -6,8 +5,13 @@ import numpy as np
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 import math
+from matplotlib.ticker import LogLocator
+plt.rcParams['font.size'] = 20 # Sets the font size to 16
 
 ro = 1.293 #kg/m^3
+MarkerList = ['s', 'o', 'D', 'x', 'p']
+LineList = ['-', ':', '--', '-.', '-']
+std_dev = 2.71/4.04 #now in um, error from manually selecting edge of shockwave
 
 # %%
 # Class to handle loading and fitting of positions
@@ -17,7 +21,7 @@ class ShockwaveData:
         self.time = self.df["time"]
         self.positions = self.df.iloc[:, 1:] / PixPerMicron
         self.numberChannels = self.positions.shape[1]
-        self.probeTimes = [3, 2, 1, 0]  # ns times of when probe channels arrive
+        self.probeTimes = [0, 1, 2.5, 3.5]  # ns times of when probe channels arrive
         self.name = name if name is not None else filepath
 
     def imageToImageVelocity(self, channel):
@@ -34,6 +38,13 @@ class ShockwaveData:
             self.getTimes(), self.getChannelPositions(channel), degree
         )
         return np.poly1d(coefficients)
+    
+
+    def variancePolynomial(self, channel):
+        def line(x, m, b):
+            return m * x + b
+        popt, pcov = curve_fit(line, self.getTimes(), self.getChannelPositions(channel=channel))
+        return np.sqrt(pcov[0,0])
 
     def velocityPolynomial(self, channel):
         return np.polyder(self.positionPolynomial(channel))
@@ -43,7 +54,11 @@ class ShockwaveData:
             self.getChannelPositions(first_channel)
             - self.getChannelPositions(last_channel)
         ) / (self.probeTimes[last_channel - 1] - self.probeTimes[first_channel - 1])
-        return velocity_in_single_image
+
+        #um_error = abs(velocity_in_single_image)#*np.sqrt(std_dev**2/(self.getChannelPositions(first_channel) - self.getChannelPositions(last_channel))**2)
+        error = np.sqrt(std_dev**2/(self.getChannelPositions(first_channel) - self.getChannelPositions(last_channel))**2)
+        um_error = abs(velocity_in_single_image) * error
+        return velocity_in_single_image, um_error
 
     def getChannelPositions(self, channel):
         return self.positions[f"channel{channel}X coord"]
@@ -56,20 +71,41 @@ class ShockwaveData:
 
     def getNumberOfChannels(self):
         return self.numberChannels
+    
+    def localMultiImageVelocity(self, channel):
+        times = self.getTimes(channel).to_numpy()
+        positions = self.getChannelPositions(channel).to_numpy()
+
+        # Clean data
+        valid = (~np.isnan(times)) & (~np.isnan(positions))
+        times = times[valid]
+        positions = positions[valid]
+
+        # Calculate finite differences
+        dt = np.diff(times)
+        dp = np.diff(positions)
+        v_local = dp / dt  # velocity at midpoints# Midpoints of time for plotting
+        t_mid = (times[:-1] + times[1:]) / 2
+
+        return t_mid, v_local
 
 
 # %%
 # Loading in Data Files
-file1, intensity1 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_190e15.tsv", "Ta 1.90e15W/cm^2"
-file2, intensity2 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_283e15.tsv", "Ta 2.83e15W/cm^2"
-file3, intensity3 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_551e15.tsv", "Ta 5.51e15W/cm^2"
-file4, intensity4 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_256e15.tsv", "Plastic 2.56e15W/cm^2"
-file5, intensity5 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_653e15.tsv", "Plastic 6.53e15W/cm^2"
-file6, intensity6 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_692e15.tsv", "Plastic 6.92e15W/cm^2"
-file7, intensity7 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_102e9.tsv", "Ng Ta 1.02e9W/cm^2"
-file8, intensity8 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_169e9.tsv", "Ng Ta 1.69e9W/cm^2"
-file9, intensity9 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_102e9.tsv", "Ng Plastic 1.02e9W/cm^2"
-file10, intensity10 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_159e9.tsv", "Ng Plastic 1.59e9W/cm^2"
+file1, intensity1 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_190e15.tsv", r"fs, Ta 1.90e15W/cm$^2$"
+file2, intensity2 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_283e15.tsv", r"fs, Ta 2.83e15W/cm$^2$"
+file3, intensity3 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ta_551e15.tsv", r"fs, Ta 5.51e15W/cm$^2$"
+file4, intensity4 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_256e15.tsv", r"fs, Plastic 2.56e15W/cm$^2$"
+file5, intensity5 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_653e15.tsv", r"fs, Plastic 6.53e15W/cm$^2$"
+file6, intensity6 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Plastic_692e15.tsv", r"fs, Plastic 6.92e15W/cm$^2$"
+file7, intensity7 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_102e9.tsv", r"ns, Ta 1.40e9W/cm$^2$"
+file8, intensity8 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_Ta_169e9.tsv", r"ns, Ta 2.33e9W/cm$^2$"
+file9, intensity9 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_102e9.tsv", r"ns, Plastic 1.40e9W/cm$^2$"
+file10, intensity10 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Ng_plastic_159e9.tsv", r"ns, Plastic 2.19e9W/cm$^2$"
+file11, intensity11 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Transv_Glass_554e15_air.tsv", r"Glass 5.54e15W/cm$^2$ IN AIR"
+file12, intensity12 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Transv_Glass_554e15_glass.tsv", r"Glass 5.54e15W/cm$^2$ IN BULK"
+file13, intensity13 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Transv_Glass_190e15_air.tsv", r"Glass 1.90e15W/cm$^2$ IN AIR"
+file14, intensity14 = r"C:\Users\tward\OneDrive\Desktop\Wszystko\Praca\Spectral Energies\03012025 SE expt\Transv_Glass_190e15_glass.tsv", r"Glass 1.90e15W/cm$^2$ IN BULK"
 
 
 Ta_190e15 = ShockwaveData(file1, name=intensity1)
@@ -82,6 +118,11 @@ Ng_Ta_102e9 = ShockwaveData(file7, name=intensity7,PixPerMicron=4.5429)
 Ng_Ta_169e9 = ShockwaveData(file8, name=intensity8,PixPerMicron=4.5429)
 Ng_plastic_102e9 = ShockwaveData(file9, name=intensity9,PixPerMicron=4.5429)
 Ng_plastic_159e9 = ShockwaveData(file10, name=intensity10,PixPerMicron=4.5429)
+Glass_554e15_air = ShockwaveData(file11, name=intensity11) #in transverse orientation
+Glass_554e15_glass = ShockwaveData(file12, name=intensity12) #in transverse orientation
+Glass_190e15_air = ShockwaveData(file13, name=intensity13) #in transverse orientation
+Glass_190e15_glass = ShockwaveData(file14, name=intensity14) #in transverse orientation
+
 
 t_s = Ng_Ta_169e9.getTimes().to_numpy() * 1e-9
 log_t = np.log(t_s)
@@ -89,72 +130,106 @@ log_t = np.log(t_s)
 dist = Ng_Ta_169e9.getChannelPositions(2).to_numpy() * 1e-6
 log_dist = np.log(dist) #NEED to make sure you remove weird distances, before the true zero time
 
-#print(Ta_190e15.getTimes().to_numpy())
-#print(t_s)
-#print(Ta_190e15.getChannelPositions(2).to_numpy())
-#print(dist)
-#print(log_dist)
-#print(log_t)
-#print (Ta_551e15.getChannelPositions(1).to_numpy())
-#print (Ta_551e15.getChannelPositions(2).to_numpy())
 
-#exit()
-
-sampleList = [Ta_551e15,Ta_283e15, Ta_190e15, Plastic_692e15, Plastic_653e15]
-#sampleList = [Plastic_256e15, Plastic_653e15, Plastic_692e15]
+#sampleList = [Ta_551e15,Ta_283e15, Ta_190e15, Plastic_692e15, Plastic_653e15]
+sampleList = [Ta_283e15]
 #sampleList = [Ta_190e15,Ta_283e15,Ta_551e15,Ng_Ta_102e9,Ng_Ta_169e9]
 #sampleList = [Plastic_653e15, Plastic_692e15,Ng_plastic_102e9,Ng_plastic_159e9]
 #sampleList = [Ng_Ta_169e9, Ng_Ta_102e9, Ng_plastic_159e9, Ng_plastic_102e9]
 #sampleList = [Ng_plastic_102e9,Ng_plastic_159e9]
+#sampleList = [Ta_551e15, Plastic_692e15, Ng_Ta_169e9, Ng_plastic_159e9]
+#sampleList = [Glass_554e15_air, Glass_190e15_air, Glass_554e15_glass, Glass_190e15_glass]
 # sampleList = [Ta234]
+
 # %%
 # Generation of plots
 
 
-#def func(log_t, C, m):
-#    return (C + m*log_t)
-#p0 = np.array([1.0e-6,3.]) #initial guesses for the coefficients
-
-'curve_fit(f, xdata, ydata, p0=None)'
-
-#popt,pcov = curve_fit(func,log_t,log_dist,p0,maxfev = 10000)
-#print('coeff are:',popt)
-
-#m = popt[1]
-#Beta = 2/m - 2
-#print(f"beta = {Beta}")
-
-#'sklearn.metrics.r2_score(y_true, y_pred)'
-#r2 = r2_score(log_dist,func(log_t,*popt))
-#print('r^2 = ', r2)
-
-#plt.plot(log_t,log_dist,label='data',c='r',marker="o",linestyle="")
-#plt.plot(log_t, func(log_t, *popt),label='fit',c='k')
-#plt.xlabel('log(time) [log(s)]')
-#plt.ylabel('log(distance) [log(m)]')
-#plt.legend(loc='best')
-#plt.show()
-
-#exit()
-
 colors = ["b", "g", "r", "c", "m", "y", "k"]
+marker_dict = {'data1':'o', 'data2':'D'}
 
 
-def plotChannelPositionandFit(data: ShockwaveData, channel, color=None):
-    times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
-    plt.plot(times, data.positionPolynomial(1)(times), color=color)
-    plt.plot(
-        data.getTimes().to_numpy(),
-        data.getChannelPositions(1).to_numpy(),
-        linestyle="",
-        marker="o",
-        label=data.getName(),
-        color=color,
-    )
+def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker='o', color=None):
+    #times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
+    times = data.getTimes(channel).to_numpy()
+    positions = data.getChannelPositions(channel).to_numpy()
+
+    # Remove NaNs or invalid points if needed
+    valid = (~np.isnan(times)) & (~np.isnan(positions))
+    times = times[valid]
+    positions = positions[valid]
+
+    # Polynomial fit (default is degree=1 for linear)
+    degree = 1
+    coefficients = np.polyfit(times, positions, degree)
+    poly = np.poly1d(coefficients)
+    fit_positions = poly(times)
+
+    #Compute R^2
+    r2 = r2_score(positions, fit_positions)
+
+    # Output
+    slope = coefficients[0]
+    intercept = coefficients[1]
+    print(f"{data.getName()} (Channel {channel}): Slope = {slope:.4f} µm/ns, Intercept = {intercept:.4f} µm, R² = {r2:.4f}")
+
+    times_fit = np.linspace(times.min(), times.max(), 100)
+    plt.plot(times_fit, poly(times_fit), linestyle=linestyle, color=color)
+    plt.plot(times, positions, linestyle='', marker=marker, label=data.getName(), color=color)
     plt.legend()
+    plt.legend(framealpha=0)
     plt.xlabel("Time (ns)")
+    plt.xlim(-5,30)
     plt.ylabel("Position (µm)")
-    plt.title("Propagation of Shockwave")
+    #plt.title("Propagation of Shockwave")
+
+    #plt.plot(times, data.positionPolynomial(1)(times), color=color)
+    #plt.plot(
+    #    data.getTimes().to_numpy(),
+    #    data.getChannelPositions(1).to_numpy(),
+    #    linestyle="",
+    #    marker="o",
+    #    label=data.getName(),
+    #    color=color,
+    #)
+    #plt.legend()
+    #plt.xlabel("Time (ns)")
+    #plt.ylabel("Position (µm)")
+    #plt.title("Propagation of Shockwave")
+
+
+#trying to get instantaneous velocity in multi channel
+def plotCombinedVelocities(data: ShockwaveData, channel: int, color=None):
+    # --- Multi-image instantaneous velocity (finite difference) ---
+    t_mid, v_local = data.localMultiImageVelocity(channel)
+    plt.plot(t_mid, v_local, linestyle='', marker='o', color=color, label=f"{data.getName()}" + r" $v_{\text{inst}}$")
+
+    # --- Single-image velocity ---
+    t_single = data.getTimes().to_numpy()
+    v_single, v_err = data.singleImageVelocities(last_channel=4)
+    v_single = v_single.to_numpy()
+    v_err = v_err.to_numpy()
+    plt.errorbar(t_single, v_single, yerr=v_err, linestyle='', marker='x', color='r', label=f"{data.getName()}" + r" $v_{\text{s}}$")
+
+    # --- Polynomial velocity fit ---
+    t_poly = np.linspace(t_single.min(), t_single.max(), 100)
+    v_poly = data.velocityPolynomial(channel)(t_poly)
+    err_poly = data.variancePolynomial(channel)
+    #plt.plot(t_poly, v_poly, linestyle='--', color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$")
+
+    plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$", alpha=0.5)
+
+    # --- Labels and legend ---
+    plt.xlabel("Time (ns)")
+    plt.ylabel("Velocity (km/s)")
+    #plt.ylim((0,20))
+    #plt.title("Shockwave Velocity calculated with various methods")
+    plt.legend()
+    plt.legend(framealpha=0)
+
+for i, shockwavedata in enumerate(sampleList):
+    plotCombinedVelocities(shockwavedata, channel=1, color=colors[i])
+plt.show()
 
 
 # Need to output numpy lists
@@ -203,7 +278,7 @@ for shockwave in sampleList:
 
 
 for i, shockwavedata in enumerate(sampleList):
-    plotChannelPositionandFit(shockwavedata, 1, color=colors[i])
+    plotChannelPositionandFit(shockwavedata, 1, linestyle=LineList[i], marker=MarkerList[i], color=colors[i])
 plt.show()
 
 for i, shockwavedata in enumerate(sampleList):
@@ -213,6 +288,7 @@ plt.show()
 
 
 # %% Fit and plot log-log distance vs. time for all samples
+
 
 def log_log_fit_and_plot(samples, channel=2):
     plt.figure(figsize=(10, 6))
@@ -228,7 +304,6 @@ def log_log_fit_and_plot(samples, channel=2):
 
         if len(times) < 3:
             print(f"Skipping {sample.getName()} due to insufficient valid data points.")
-            continue
 
         log_t = np.log(times)
         log_d = np.log(dists)
@@ -239,6 +314,7 @@ def log_log_fit_and_plot(samples, channel=2):
 
         p0 = [1.0e-6, 3]
         try:
+            loglog = True
             popt, pcov = curve_fit(func, log_t, log_d, p0=p0, maxfev=10000)
             m = popt[1]
             beta = 2 / m - 2
@@ -248,16 +324,24 @@ def log_log_fit_and_plot(samples, channel=2):
 
             # Plot
             color = colors[i % len(colors)]
-            plt.plot(log_t, log_d, marker='o', linestyle='', label=f"{sample.getName()} data", color=color)
-            plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit", color=color)
+            if loglog:
+                plt.plot(np.exp(log_t), np.exp(log_d), marker=MarkerList[i], linestyle='', color=color)
+                plt.plot(np.exp(log_t), np.exp(func(log_t, *popt)), linestyle=LineList[i], label=sample.getName(), color=color)
+            else:
+                plt.plot(log_t, log_d, marker='o', linestyle='', label=f"{sample.getName()} data", color=color)
+                plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit", color=color)
         except RuntimeError:
             print(f"Fit failed for {sample.getName()}.")
 
-    plt.xlabel("log(time) [log(s)]")
-    plt.ylabel("log(distance) [log(m)]")
-    plt.title("log-log Fit of Shockwave Propagation")
-    plt.legend()
-    plt.grid(True)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Position (m)")
+    if loglog:
+        plt.loglog()
+        ymin, ymax = plt.ylim()
+        plt.ylim((1e-4, ymax))
+    #plt.title("log-log Fit of Shockwave Propagation")
+    plt.legend(framealpha=0)
+    #plt.grid(True)
     plt.tight_layout()
     plt.show()
 
