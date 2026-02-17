@@ -44,6 +44,8 @@ class ShockwaveData:
         def line(x, m, b):
             return m * x + b
         popt, pcov = curve_fit(line, self.getTimes(), self.getChannelPositions(channel=channel))
+        # Note: Despite the name, this returns standard error of the slope parameter
+        # pcov[0,0] is variance of slope parameter m, sqrt gives standard error
         return np.sqrt(pcov[0,0])
 
     def velocityPolynomial(self, channel):
@@ -86,8 +88,13 @@ class ShockwaveData:
         dp = np.diff(positions)
         v_local = dp / dt  # velocity at midpoints# Midpoints of time for plotting
         t_mid = (times[:-1] + times[1:]) / 2
+        
+        # Calculate error from position measurement uncertainty
+        # std_dev (defined at module level) is the position measurement error in µm
+        # Error propagation: δv = sqrt((δp1/dt)^2 + (δp2/dt)^2) = sqrt(2) * std_dev / dt
+        v_error = np.sqrt(2) * std_dev / dt
 
-        return t_mid, v_local
+        return t_mid, v_local, v_error
 
 
 # %%
@@ -167,11 +174,14 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker
 
     #Compute R^2
     r2 = r2_score(positions, fit_positions)
+    
+    # Compute standard error of the slope from the fit
+    slope_std = data.variancePolynomial(channel)  # Returns std error despite function name
 
     # Output
     slope = coefficients[0]
     intercept = coefficients[1]
-    print(f"{data.getName()} (Channel {channel}): Slope = {slope:.4f} µm/ns, Intercept = {intercept:.4f} µm, R² = {r2:.4f}")
+    print(f"{data.getName()} (Channel {channel}): Slope = {slope:.4f} ± {slope_std:.4f} µm/ns, Intercept = {intercept:.4f} µm, R² = {r2:.4f}")
 
     times_fit = np.linspace(times.min(), times.max(), 100)
     plt.plot(times_fit, poly(times_fit), linestyle=linestyle, color=color)
@@ -201,23 +211,23 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker
 #trying to get instantaneous velocity in multi channel
 def plotCombinedVelocities(data: ShockwaveData, channel: int, color=None):
     # --- Multi-image instantaneous velocity (finite difference) ---
-    t_mid, v_local = data.localMultiImageVelocity(channel)
-    plt.plot(t_mid, v_local, linestyle='', marker='o', color=color, label=f"{data.getName()}" + r" $v_{\text{inst}}$")
+    t_mid, v_local, v_error = data.localMultiImageVelocity(channel)
+    plt.errorbar(t_mid, v_local, yerr=v_error, linestyle='', marker='o', color=color, label=f"{data.getName()}" + r" $v_{\text{inst}} \pm \sigma$")
 
     # --- Single-image velocity ---
     t_single = data.getTimes().to_numpy()
     v_single, v_err = data.singleImageVelocities(last_channel=4)
     v_single = v_single.to_numpy()
     v_err = v_err.to_numpy()
-    plt.errorbar(t_single, v_single, yerr=v_err, linestyle='', marker='x', color='r', label=f"{data.getName()}" + r" $v_{\text{s}}$")
+    plt.errorbar(t_single, v_single, yerr=v_err, linestyle='', marker='x', color='r', label=f"{data.getName()}" + r" $v_{\text{s}} \pm \sigma$")
 
     # --- Polynomial velocity fit ---
     t_poly = np.linspace(t_single.min(), t_single.max(), 100)
     v_poly = data.velocityPolynomial(channel)(t_poly)
-    err_poly = data.variancePolynomial(channel)
+    err_poly = data.variancePolynomial(channel)  # Returns std error despite function name
     #plt.plot(t_poly, v_poly, linestyle='--', color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$")
 
-    plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$", alpha=0.5)
+    plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}} \pm \sigma$", alpha=0.5)
 
     # --- Labels and legend ---
     plt.xlabel("Time (ns)")
@@ -236,19 +246,29 @@ plt.show()
 # Justin was here 4/10/25
 def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
+    v_poly = data.velocityPolynomial(channel)(times)
+    err_poly = data.variancePolynomial(channel)  # Returns std error despite function name; scalar constant error band
+    
     plt.plot(
         times,
-        data.velocityPolynomial(channel)(times),
+        v_poly,
         color=color,
-        label=f"{data.getName()} multi-image velocity",
+        label=f"{data.getName()} multi-image velocity ± σ",
     )
+    plt.fill_between(times, v_poly - err_poly, v_poly + err_poly, color=color, alpha=0.3)
 
-    plt.plot(
-        data.getTimes().to_numpy(),
-        data.singleImageVelocities(last_channel=4).to_numpy(),
+    t_single = data.getTimes().to_numpy()
+    v_single, v_err = data.singleImageVelocities(last_channel=4)
+    v_single = v_single.to_numpy()
+    v_err = v_err.to_numpy()
+    
+    plt.errorbar(
+        t_single,
+        v_single,
+        yerr=v_err,
         marker="o",
         linestyle="",
-        label=f"{data.getName()} single-image velocity",
+        label=f"{data.getName()} single-image velocity ± σ",
         color=color,
     )
     plt.legend()
@@ -319,17 +339,23 @@ def log_log_fit_and_plot(samples, channel=2):
             m = popt[1]
             beta = 2 / m - 2
             r2 = r2_score(log_d, func(log_t, *popt))
+            
+            # Calculate error in m and propagate to beta
+            # Error in m from covariance matrix
+            m_std = np.sqrt(pcov[1, 1])
+            # Error propagation: dβ/dm = -2/m², so δβ = (2/m²) * δm
+            beta_std = (2 / m**2) * m_std
 
-            print(f"{sample.getName()} — C = {popt[0]:.3f}, m = {m:.3f}, β = {beta:.3f}, R² = {r2:.4f}")
+            print(f"{sample.getName()} — C = {popt[0]:.3f}, m = {m:.3f} ± {m_std:.3f}, β = {beta:.3f} ± {beta_std:.3f}, R² = {r2:.4f}")
 
             # Plot
             color = colors[i % len(colors)]
             if loglog:
                 plt.plot(np.exp(log_t), np.exp(log_d), marker=MarkerList[i], linestyle='', color=color)
-                plt.plot(np.exp(log_t), np.exp(func(log_t, *popt)), linestyle=LineList[i], label=sample.getName(), color=color)
+                plt.plot(np.exp(log_t), np.exp(func(log_t, *popt)), linestyle=LineList[i], label=f"{sample.getName()}, β = {beta:.2f} ± {beta_std:.2f}", color=color)
             else:
                 plt.plot(log_t, log_d, marker='o', linestyle='', label=f"{sample.getName()} data", color=color)
-                plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit", color=color)
+                plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit, β = {beta:.2f} ± {beta_std:.2f}", color=color)
         except RuntimeError:
             print(f"Fit failed for {sample.getName()}.")
 
