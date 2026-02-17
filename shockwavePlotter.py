@@ -44,8 +44,8 @@ class ShockwaveData:
         def line(x, m, b):
             return m * x + b
         popt, pcov = curve_fit(line, self.getTimes(), self.getChannelPositions(channel=channel))
-        # Note: Despite the name, this returns standard deviation (sqrt of variance)
-        # pcov[0,0] is variance of slope parameter m, so sqrt gives standard error
+        # Note: Despite the name, this returns standard error of the slope parameter
+        # pcov[0,0] is variance of slope parameter m, sqrt gives standard error
         return np.sqrt(pcov[0,0])
 
     def velocityPolynomial(self, channel):
@@ -174,8 +174,8 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker
     #Compute R^2
     r2 = r2_score(positions, fit_positions)
     
-    # Compute standard deviation of the fit
-    slope_std = data.variancePolynomial(channel)  # Returns std dev despite function name
+    # Compute standard error of the slope from the fit
+    slope_std = data.variancePolynomial(channel)  # Returns std error despite function name
 
     # Output
     slope = coefficients[0]
@@ -223,7 +223,7 @@ def plotCombinedVelocities(data: ShockwaveData, channel: int, color=None):
     # --- Polynomial velocity fit ---
     t_poly = np.linspace(t_single.min(), t_single.max(), 100)
     v_poly = data.velocityPolynomial(channel)(t_poly)
-    err_poly = data.variancePolynomial(channel)  # Returns std dev despite function name
+    err_poly = data.variancePolynomial(channel)  # Returns std error despite function name
     #plt.plot(t_poly, v_poly, linestyle='--', color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$")
 
     plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}} \pm \sigma$", alpha=0.5)
@@ -246,7 +246,7 @@ plt.show()
 def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
     v_poly = data.velocityPolynomial(channel)(times)
-    err_poly = data.variancePolynomial(channel)  # Returns std dev despite function name; scalar constant error band
+    err_poly = data.variancePolynomial(channel)  # Returns std error despite function name; scalar constant error band
     
     plt.plot(
         times,
