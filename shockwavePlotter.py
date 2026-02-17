@@ -90,6 +90,7 @@ class ShockwaveData:
         t_mid = (times[:-1] + times[1:]) / 2
         
         # Calculate error from position measurement uncertainty
+        # std_dev (defined at module level) is the position measurement error in µm
         # Error propagation: δv = sqrt((δp1/dt)^2 + (δp2/dt)^2) = sqrt(2) * std_dev / dt
         v_error = np.sqrt(2) * std_dev / dt
 
