@@ -86,8 +86,12 @@ class ShockwaveData:
         dp = np.diff(positions)
         v_local = dp / dt  # velocity at midpoints# Midpoints of time for plotting
         t_mid = (times[:-1] + times[1:]) / 2
+        
+        # Calculate error from position measurement uncertainty
+        # Error propagation: δv = sqrt((δp1/dt)^2 + (δp2/dt)^2) = sqrt(2) * std_dev / dt
+        v_error = np.sqrt(2) * std_dev / dt
 
-        return t_mid, v_local
+        return t_mid, v_local, v_error
 
 
 # %%
@@ -167,11 +171,14 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker
 
     #Compute R^2
     r2 = r2_score(positions, fit_positions)
+    
+    # Compute standard deviation of the fit
+    slope_std = data.variancePolynomial(channel)
 
     # Output
     slope = coefficients[0]
     intercept = coefficients[1]
-    print(f"{data.getName()} (Channel {channel}): Slope = {slope:.4f} µm/ns, Intercept = {intercept:.4f} µm, R² = {r2:.4f}")
+    print(f"{data.getName()} (Channel {channel}): Slope = {slope:.4f} ± {slope_std:.4f} µm/ns, Intercept = {intercept:.4f} µm, R² = {r2:.4f}")
 
     times_fit = np.linspace(times.min(), times.max(), 100)
     plt.plot(times_fit, poly(times_fit), linestyle=linestyle, color=color)
@@ -201,15 +208,15 @@ def plotChannelPositionandFit(data: ShockwaveData, channel, linestyle='', marker
 #trying to get instantaneous velocity in multi channel
 def plotCombinedVelocities(data: ShockwaveData, channel: int, color=None):
     # --- Multi-image instantaneous velocity (finite difference) ---
-    t_mid, v_local = data.localMultiImageVelocity(channel)
-    plt.plot(t_mid, v_local, linestyle='', marker='o', color=color, label=f"{data.getName()}" + r" $v_{\text{inst}}$")
+    t_mid, v_local, v_error = data.localMultiImageVelocity(channel)
+    plt.errorbar(t_mid, v_local, yerr=v_error, linestyle='', marker='o', color=color, label=f"{data.getName()}" + r" $v_{\text{inst}} \pm \sigma$")
 
     # --- Single-image velocity ---
     t_single = data.getTimes().to_numpy()
     v_single, v_err = data.singleImageVelocities(last_channel=4)
     v_single = v_single.to_numpy()
     v_err = v_err.to_numpy()
-    plt.errorbar(t_single, v_single, yerr=v_err, linestyle='', marker='x', color='r', label=f"{data.getName()}" + r" $v_{\text{s}}$")
+    plt.errorbar(t_single, v_single, yerr=v_err, linestyle='', marker='x', color='r', label=f"{data.getName()}" + r" $v_{\text{s}} \pm \sigma$")
 
     # --- Polynomial velocity fit ---
     t_poly = np.linspace(t_single.min(), t_single.max(), 100)
@@ -217,7 +224,7 @@ def plotCombinedVelocities(data: ShockwaveData, channel: int, color=None):
     err_poly = data.variancePolynomial(channel)
     #plt.plot(t_poly, v_poly, linestyle='--', color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$")
 
-    plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}}$", alpha=0.5)
+    plt.fill_between(t_poly, v_poly - err_poly, v_poly + err_poly, color='k', label=f"{data.getName()}" + r" $v_{\text{avg}} \pm \sigma$", alpha=0.5)
 
     # --- Labels and legend ---
     plt.xlabel("Time (ns)")
@@ -236,19 +243,29 @@ plt.show()
 # Justin was here 4/10/25
 def plotVelocityvsSingleImage(data: ShockwaveData, channel: int, color=None):
     times = np.linspace(data.getTimes().min(), data.getTimes().max(), 100)
+    v_poly = data.velocityPolynomial(channel)(times)
+    err_poly = data.variancePolynomial(channel)
+    
     plt.plot(
         times,
-        data.velocityPolynomial(channel)(times),
+        v_poly,
         color=color,
-        label=f"{data.getName()} multi-image velocity",
+        label=f"{data.getName()} multi-image velocity ± σ",
     )
+    plt.fill_between(times, v_poly - err_poly, v_poly + err_poly, color=color, alpha=0.3)
 
-    plt.plot(
-        data.getTimes().to_numpy(),
-        data.singleImageVelocities(last_channel=4).to_numpy(),
+    t_single = data.getTimes().to_numpy()
+    v_single, v_err = data.singleImageVelocities(last_channel=4)
+    v_single = v_single.to_numpy()
+    v_err = v_err.to_numpy()
+    
+    plt.errorbar(
+        t_single,
+        v_single,
+        yerr=v_err,
         marker="o",
         linestyle="",
-        label=f"{data.getName()} single-image velocity",
+        label=f"{data.getName()} single-image velocity ± σ",
         color=color,
     )
     plt.legend()
