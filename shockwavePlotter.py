@@ -336,17 +336,23 @@ def log_log_fit_and_plot(samples, channel=2):
             m = popt[1]
             beta = 2 / m - 2
             r2 = r2_score(log_d, func(log_t, *popt))
+            
+            # Calculate error in m and propagate to beta
+            # Error in m from covariance matrix
+            m_std = np.sqrt(pcov[1, 1])
+            # Error propagation: dβ/dm = -2/m², so δβ = (2/m²) * δm
+            beta_std = (2 / m**2) * m_std
 
-            print(f"{sample.getName()} — C = {popt[0]:.3f}, m = {m:.3f}, β = {beta:.3f}, R² = {r2:.4f}")
+            print(f"{sample.getName()} — C = {popt[0]:.3f}, m = {m:.3f} ± {m_std:.3f}, β = {beta:.3f} ± {beta_std:.3f}, R² = {r2:.4f}")
 
             # Plot
             color = colors[i % len(colors)]
             if loglog:
                 plt.plot(np.exp(log_t), np.exp(log_d), marker=MarkerList[i], linestyle='', color=color)
-                plt.plot(np.exp(log_t), np.exp(func(log_t, *popt)), linestyle=LineList[i], label=sample.getName(), color=color)
+                plt.plot(np.exp(log_t), np.exp(func(log_t, *popt)), linestyle=LineList[i], label=f"{sample.getName()}, β = {beta:.2f} ± {beta_std:.2f}", color=color)
             else:
                 plt.plot(log_t, log_d, marker='o', linestyle='', label=f"{sample.getName()} data", color=color)
-                plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit", color=color)
+                plt.plot(log_t, func(log_t, *popt), linestyle='-', label=f"{sample.getName()} fit, β = {beta:.2f} ± {beta_std:.2f}", color=color)
         except RuntimeError:
             print(f"Fit failed for {sample.getName()}.")
 
