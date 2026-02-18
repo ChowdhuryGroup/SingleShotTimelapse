@@ -37,7 +37,15 @@ plt.rcParams.update(
         "grid.alpha": 0.3,  # Make grid faint
         "grid.linestyle": "--",
         "axes.prop_cycle": plt.cycler(
-            color=["#004488", "#DDAA33", "#BB5566", "#000000"]
+            color=[
+        "#004488",  # Dark Blue
+        "#DDAA33",  # Gold/Yellow
+        "#BB5566",  # Rose/Red
+        "#000000",  # Black
+        "#6699CC",  # Light Blue
+        "#EE99AA",  # Pink
+        "#994499"   # Purple
+    ]
         ),
     }
 )
