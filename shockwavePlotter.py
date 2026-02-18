@@ -13,6 +13,36 @@ MarkerList = ['s', 'o', 'D', 'x', 'p']
 LineList = ['-', ':', '--', '-.', '-']
 std_dev = 2.71/4.04 #now in um, error from manually selecting edge of shockwave
 
+plt.rcParams.update(
+    {
+        # Text and Font
+        "font.family": "serif",  # Professional serif font
+        "font.size": 12,  # Base font size
+        "axes.labelsize": 14,  # X and Y label size
+        "axes.titlesize": 14,  # Title size
+        "legend.fontsize": 10,  # Legend text
+        "xtick.labelsize": 10,  # Axis tick labels
+        "ytick.labelsize": 10,
+        # Line and Marker Styles
+        "lines.linewidth": 2.0,  # Thicker lines for visibility
+        "lines.markersize": 6,  # Larger markers
+        "axes.linewidth": 1.2,  # Thicker axis frame
+        # Layout and Exporting
+        "figure.figsize": (6, 4),  # Standard aspect ratio
+        # "figure.autolayout": True,    # Same as plt.tight_layout()
+        "savefig.dpi": 300,  # High-resolution export
+        "savefig.bbox": "tight",  # No extra white space on export
+        # Colors and Grid
+        "axes.grid": False,  # Subtle grid helps data reading
+        "grid.alpha": 0.3,  # Make grid faint
+        "grid.linestyle": "--",
+        "axes.prop_cycle": plt.cycler(
+            color=["#004488", "#DDAA33", "#BB5566", "#000000"]
+        ),
+    }
+)
+
+
 # %%
 # Class to handle loading and fitting of positions
 class ShockwaveData:
